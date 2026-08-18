@@ -1,13 +1,13 @@
 #include "environmentchecker.h"
 
 #include <QDir>
-#include <QDirIterator>
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTimer>
 
+#include "process/dependencyprobe.h"
 #include "process/startwrapped.h"
 #include "settings/appsettings.h"
 
@@ -85,27 +85,13 @@ EnvItem EnvironmentChecker::checkOne(const QString &name, const AppSettings &set
             return it;
         }
 
+        // 依赖/产物判定统一走 probeDependencies（与启动体检同一数据源）
+        const QList<CheckItem> deps = probeDependencies(settings.sourcePath);
         QStringList missing;
-        if (!QDir(settings.sourcePath + QStringLiteral("/node_modules")).exists())
-            missing << QStringLiteral("依赖 node_modules");
-        if (!QDir(settings.sourcePath + QStringLiteral("/apps/web/dist")).exists())
-            missing << QStringLiteral("前端产物 apps/web/dist");
-
-        bool libFound = false;
-        QDirIterator itr(settings.sourcePath + QStringLiteral("/packages"),
-                         QStringList() << QStringLiteral("lib"),
-                         QDir::Dirs | QDir::NoDotAndDotDot,
-                         QDirIterator::Subdirectories);
-        while (itr.hasNext()) {
-            itr.next();
-            if (!QDir(itr.filePath()).entryList(QDir::Files).isEmpty()) {
-                libFound = true;
-                break;
-            }
+        for (const auto &d : deps) {
+            if (!d.passed)
+                missing << d.detail;
         }
-        if (!libFound)
-            missing << QStringLiteral("库产物 packages/*/lib");
-
         it.passed = missing.isEmpty();
         it.detail = missing.isEmpty() ? QStringLiteral("依赖与构建产物齐全") : missing.join(QStringLiteral("、"));
         return it;

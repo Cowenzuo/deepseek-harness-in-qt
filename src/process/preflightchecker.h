@@ -4,17 +4,14 @@
 #include <QObject>
 #include <QString>
 
+#include "process/dependencyprobe.h"
+
 namespace dshinqt {
 
 class AppSettings;
 
-struct CheckItem
-{
-    QString name;
-    bool passed = false;
-    QString detail;
-};
-
+// 启动前体检：依赖与构建产物检查（环境项由 EnvironmentChecker 负责）。
+// 检测逻辑统一收敛到 probeDependencies（dependencyprobe.h），避免双份维护。
 class PreflightChecker : public QObject
 {
     Q_OBJECT
@@ -22,7 +19,6 @@ class PreflightChecker : public QObject
 public:
     explicit PreflightChecker(QObject *parent = nullptr);
 
-    // 依赖与构建产物体检（git/node/pnpm 等环境项由 EnvironmentChecker 负责）
     QList<CheckItem> check(const AppSettings &settings);
 };
 
