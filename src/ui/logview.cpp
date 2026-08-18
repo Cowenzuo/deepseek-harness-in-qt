@@ -1,4 +1,4 @@
-﻿#include "logview.h"
+#include "logview.h"
 #include "ui/theme.h"
 
 #include <QColor>
@@ -16,13 +16,22 @@ namespace dshinqt {
 LogView::LogView(QWidget *parent)
     : QWidget(parent)
 {
-    // 深色背景用 palette（可靠）
+    // 深色背景用 palette（可靠），QSS 只用于子控件
     setAutoFillBackground(true);
     {
         QPalette pal = palette();
         pal.setColor(QPalette::Window, Theme::windowBg());
         setPalette(pal);
     }
+    // 顶部工具按钮：与全局 #secondary 风格一致的深色蓝系
+    setStyleSheet(QStringLiteral(R"(
+QPushButton#logTool {
+    background: #2c2c31; border: 1px solid #38383e; border-radius: 6px;
+    padding: 4px 12px; color: #9a9aa0; font-size: 12px;
+}
+QPushButton#logTool:hover { background: #35353b; border-color: #4f8cff; color: #ffffff; }
+QPushButton#logTool:pressed { background: #2f3550; }
+)"));
 
     // 顶部工具行：返回主页 + 清空
     auto *backBtn = new QPushButton(QStringLiteral("← 返回主页"), this);
@@ -38,9 +47,10 @@ LogView::LogView(QWidget *parent)
 
     auto *toolRow = new QHBoxLayout;
     toolRow->setContentsMargins(8, 6, 8, 6);
+    toolRow->setSpacing(8);
     toolRow->addWidget(backBtn);
-    toolRow->addStretch(1);
     toolRow->addWidget(clearBtn);
+    toolRow->addStretch(1);
 
     m_text = new QTextEdit(this);
     m_text->setReadOnly(true);

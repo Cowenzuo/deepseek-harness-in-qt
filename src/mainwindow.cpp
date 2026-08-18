@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 
 #include <QCloseEvent>
 #include <QColor>
@@ -143,10 +143,19 @@ QPushButton:pressed { background: #2f3550; }
     connect(settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettings);
     statusBar()->addWidget(settingsBtn); // 左侧
 
-    // 状态栏工具按钮：日志 / 刷新
+    // 状态栏工具按钮（日志 / 刷新）：与设置按钮同一深色蓝系，文字按钮带内边距与间距
+    const QString toolBtnQss = QStringLiteral(R"(
+QPushButton {
+    background: #2c2c31; border: 1px solid #38383e; border-radius: 8px;
+    padding: 2px 10px; color: #9a9aa0; font-size: 11px; margin-left: 6px;
+}
+QPushButton:hover { background: #35353b; border-color: #4f8cff; color: #ffffff; }
+QPushButton:pressed { background: #2f3550; }
+)");
     auto *logBtn = new QPushButton(QStringLiteral("日志"), this);
     logBtn->setCursor(Qt::PointingHandCursor);
     logBtn->setFocusPolicy(Qt::TabFocus);
+    logBtn->setStyleSheet(toolBtnQss);
     connect(logBtn, &QPushButton::clicked, this, &MainWindow::showLogPage);
     statusBar()->addWidget(logBtn);
 
@@ -154,6 +163,7 @@ QPushButton:pressed { background: #2f3550; }
     reloadBtn->setCursor(Qt::PointingHandCursor);
     reloadBtn->setFocusPolicy(Qt::TabFocus);
     reloadBtn->setToolTip(QStringLiteral("重新加载 dsh Web UI（F5）"));
+    reloadBtn->setStyleSheet(toolBtnQss);
     connect(reloadBtn, &QPushButton::clicked, this, [this] {
         m_homePage->load(QUrl(m_settings.webUrl()));
         showHomePage();
