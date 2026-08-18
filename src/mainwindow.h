@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 
+#include "process/buildflowmanager.h"
 #include "process/dshprocessmanager.h"
 #include "settings/appsettings.h"
 #include "update/updatemanager.h"
@@ -40,14 +41,14 @@ private slots:
     void onSetupFinished();
     void onErrorRetry();
     void onErrorBuild();
+    void onBuildFinished(bool success, const QString &error, BuildFlowManager::Origin origin);
     void onUpdateStageChanged(UpdateManager::Stage stage);
     void onUpdateFinished(bool success, const QString &error);
 
 private:
     void continueToService();
     void startService();
-    void runOneClickBuild(bool fromSetup = false);
-    void runBuildStep(const QStringList &pnpmArgs);
+    void runOneClickBuild(BuildFlowManager::Origin origin);
     void startClone();
     void showSetupPage();
     void showErrorPage(const QString &message, bool canBuild);
@@ -64,8 +65,8 @@ private:
     EnvironmentChecker *m_env = nullptr;
     GitClient *m_git = nullptr;
     UpdateManager *m_update = nullptr;
+    BuildFlowManager *m_buildFlow = nullptr;
     QLabel *m_statusLabel = nullptr; // 状态栏右侧状态消息（替代 showMessage）
-    bool m_buildFromSetup = false;
 };
 
 } // namespace dshinqt

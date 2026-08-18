@@ -7,8 +7,6 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPalette>
-#include <QProcess>
-#include <QProcessEnvironment>
 #include <QPushButton>
 #include <QShortcut>
 #include <QStackedWidget>
@@ -19,8 +17,6 @@
 #include "git/gitclient.h"
 #include "process/environmentchecker.h"
 #include "process/preflightchecker.h"
-#include "process/proxydetector.h"
-#include "process/startwrapped.h"
 #include "settings/settingsdialog.h"
 #include "ui/errorpage.h"
 #include "ui/homepage.h"
@@ -113,9 +109,12 @@ MainWindow::MainWindow(QWidget *parent)
     m_preflight = new PreflightChecker(this);
     m_git = new GitClient(&m_settings, this);
     m_update = new UpdateManager(&m_settings, m_git, m_process, this);
+    m_buildFlow = new BuildFlowManager(&m_settings, this);
 
     connect(m_process, &DshProcessManager::stateChanged, this, &MainWindow::onDshStateChanged);
     connect(m_process, &DshProcessManager::logOutput, this, &MainWindow::onDshLog);
+    connect(m_buildFlow, &BuildFlowManager::logOutput, this, &MainWindow::onDshLog);
+    connect(m_buildFlow, &BuildFlowManager::buildFinished, this, &MainWindow::onBuildFinished);
     // 主页就绪后再显示：避免用户看到 dsh 早期加载的 “failed to load plugins” 警告
     connect(m_homePage, &HomePage::pageReady, this, [this]() {
         qDebug() << "[UI] HomePage 就绪 -> 显示主页";
@@ -127,7 +126,8 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(m_setupPage, &SetupPage::finished, this, &MainWindow::onSetupFinished);
     connect(m_setupPage, &SetupPage::checkFailed, this, &MainWindow::showSetupPage);
-    connect(m_setupPage, &SetupPage::buildRequested, this, [this]() { runOneClickBuild(/*fromSetup=*/true); });
+    connect(m_setupPage, &SetupPage::buildRequested, this,
+            [this]() { runOneClickBuild(BuildFlowManager::Origin::SetupPage); });
     connect(m_setupPage, &SetupPage::cloneRequested, this, &MainWindow::startClone);
     connect(m_errorPage, &ErrorPage::retryRequested, this, &MainWindow::onErrorRetry);
     connect(m_errorPage, &ErrorPage::buildRequested, this, &MainWindow::onErrorBuild);
@@ -315,120 +315,39 @@ void MainWindow::onErrorRetry()
 
 void MainWindow::onErrorBuild()
 {
-    runOneClickBuild(/*fromSetup=*/false);
+    runOneClickBuild(BuildFlowManager::Origin::ErrorPage);
 }
 
-void MainWindow::runOneClickBuild(bool fromSetup)
+void MainWindow::runOneClickBuild(BuildFlowManager::Origin origin)
 {
-    m_buildFromSetup = fromSetup;
     showLogPage(); // 切到 CLI 视口，完整呈现 pnpm 输出
-    runBuildStep({QStringLiteral("install")});
+    m_buildFlow->startOneClickBuild(origin);
 }
 
 void MainWindow::startClone()
 {
-    const QString url = m_settings.repoUrl.isEmpty()
-                            ? QStringLiteral("https://github.com/deepseek-ai/deepseek-harness.git")
-                            : m_settings.repoUrl;
-    const QString target = m_settings.sourcePath;
-    const QString git = m_settings.gitProgram();
-
-    // 切到 CLI 视口，完整呈现 git 输出（含 Receiving objects 进度）
-    showLogPage();
-
-    auto *proc = new QProcess(this);
-    proc->setProcessChannelMode(QProcess::MergedChannels);
-    connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
-        m_logView->appendLog(QString::fromUtf8(proc->readAllStandardOutput()));
-    });
-    connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus) {
-        proc->deleteLater();
-        if (code != 0) {
-            m_logView->appendLog(QStringLiteral("git clone 失败（code=%1）").arg(code), true);
-            QMessageBox::warning(this,
-                                 QStringLiteral("克隆失败"),
-                                 QStringLiteral("git clone 失败，请查看日志页确认原因（网络/仓库地址）。"));
-            m_setupPage->recheck();
-            showSetupPage();
-            return;
-        }
-        m_logView->appendLog(QStringLiteral("克隆完成，开始安装依赖..."), false);
-        m_buildFromSetup = true;
-        runBuildStep({QStringLiteral("install")});
-    });
-    // FailedToStart 时 finished 不会触发，单独兜底
-    connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
-        if (e == QProcess::FailedToStart) {
-            proc->deleteLater();
-            m_logView->appendLog(QStringLiteral("git 启动失败（gitPath 无效或权限不足）"), true);
-            QMessageBox::warning(this, QStringLiteral("克隆失败"), QStringLiteral("git 启动失败，请检查 git 路径设置。"));
-            m_setupPage->recheck();
-            showSetupPage();
-        }
-    });
-
-    QStringList gitArgs = ProxyDetector::gitProxyArgs();
-    gitArgs << QStringLiteral("clone") << QStringLiteral("--progress") << url << target;
-    m_logView->appendLog(QStringLiteral("> git clone %1 %2").arg(url, target));
-    proc->start(git, gitArgs);
+    showLogPage(); // 切到 CLI 视口，完整呈现 git 输出（含 Receiving objects 进度）
+    m_buildFlow->startClone();
 }
 
-void MainWindow::runBuildStep(const QStringList &pnpmArgs)
+void MainWindow::onBuildFinished(bool success, const QString &error, BuildFlowManager::Origin origin)
 {
-    const QString pnpm = m_settings.pnpmPath.isEmpty() ? QStringLiteral("pnpm") : m_settings.pnpmPath;
-
-    auto *proc = new QProcess(this);
-    proc->setWorkingDirectory(m_settings.sourcePath);
-    proc->setProcessChannelMode(QProcess::MergedChannels);
-
-    // pnpm 不读 Windows 系统代理，自动注入代理环境变量，使 npm 包下载走代理
-    proc->setProcessEnvironment(ProxyDetector::pnpmEnvironment());
-
-    connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
-        m_logView->appendLog(QString::fromUtf8(proc->readAllStandardOutput()));
-    });
-    connect(proc, &QProcess::finished, this, [proc, pnpmArgs, this](int code, QProcess::ExitStatus) {
-        proc->deleteLater();
-        if (code != 0) {
-            m_logView->appendLog(QStringLiteral("命令失败：pnpm %1").arg(pnpmArgs.join(' ')), true);
-            if (m_buildFromSetup) {
-                QMessageBox::warning(this,
-                                     QStringLiteral("构建失败"),
-                                     QStringLiteral("pnpm %1 失败，请查看日志页确认原因。").arg(pnpmArgs.join(' ')));
-                m_setupPage->recheck();
-                showSetupPage();
-            }
-            return;
+    if (!success) {
+        if (origin == BuildFlowManager::Origin::SetupPage) {
+            QMessageBox::warning(this, QStringLiteral("构建失败"), error);
+            m_setupPage->recheck();
+            showSetupPage();
         }
-        if (pnpmArgs == QStringList{QStringLiteral("install")}) {
-            m_logView->appendLog(QStringLiteral("> pnpm run build"));
-            runBuildStep({QStringLiteral("run"), QStringLiteral("build")});
-        } else {
-            m_logView->appendLog(QStringLiteral("构建完成"));
-            if (m_buildFromSetup) {
-                // 构建来自引导页：回到引导页重新校验
-                m_setupPage->recheck();
-                showSetupPage();
-            } else {
-                startService();
-            }
-        }
-    });
-    // FailedToStart 时 finished 不会触发，单独兜底
-    connect(proc, &QProcess::errorOccurred, this, [proc, pnpmArgs, this](QProcess::ProcessError e) {
-        if (e == QProcess::FailedToStart) {
-            proc->deleteLater();
-            m_logView->appendLog(QStringLiteral("pnpm 启动失败（pnpmPath 无效或权限不足）"), true);
-            if (m_buildFromSetup) {
-                QMessageBox::warning(this, QStringLiteral("构建失败"), QStringLiteral("pnpm 启动失败，请检查 pnpm 路径设置。"));
-                m_setupPage->recheck();
-                showSetupPage();
-            }
-        }
-    });
-
-    m_logView->appendLog(QStringLiteral("> pnpm %1").arg(pnpmArgs.join(' ')));
-    startWrapped(proc, pnpm, pnpmArgs);
+        // 错误页来源：仅日志记录（原行为），用户可回错误页重试
+        return;
+    }
+    if (origin == BuildFlowManager::Origin::SetupPage) {
+        // 构建来自引导页：回到引导页重新校验
+        m_setupPage->recheck();
+        showSetupPage();
+    } else {
+        startService();
+    }
 }
 
 void MainWindow::onDshStateChanged(DshProcessManager::State state)

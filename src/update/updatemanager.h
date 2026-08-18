@@ -1,15 +1,17 @@
 #pragma once
 
 #include <QObject>
+#include <QStringList>
 #include <QTimer>
 
-#include "process/dshprocessmanager.h"
+#include <functional>
 
-class QProcess;
+#include "process/dshprocessmanager.h"
 
 namespace dshinqt {
 
 class AppSettings;
+class CommandRunner;
 class GitClient;
 
 class UpdateManager : public QObject
@@ -43,19 +45,22 @@ private:
     void setStage(Stage s);
     void runGitFetch();
     void beginCheckout();
+    void runGitCheckoutStep(const QStringList &firstArgs, const QStringList &fallbackArgs, const QString &failPrefix);
+    void afterCheckout();
     void runGitPull();
     void beginInstall();
     void beginBuild();
     void beginStart();
-    void runPnpm(const QStringList &args, Stage nextStage);
+    void runPnpm(const QStringList &args, std::function<void()> onSuccess);
+    void runGitCommand(const QStringList &args, const QString &failPrefix, std::function<void()> onSuccess);
     void fail(const QString &error);
     void done();
 
     AppSettings *m_settings = nullptr;
     GitClient *m_git = nullptr;
     DshProcessManager *m_proc = nullptr;
-    QTimer m_startTimeout;            // Starting 阶段兜底：60s 内服务未 Running 则按失败处理
-    QProcess *m_currentProc = nullptr; // 当前在跑的命令（fetch/pull/pnpm），供 cancel 使用
+    CommandRunner *m_runner = nullptr;
+    QTimer m_startTimeout; // Starting 阶段兜底：60s 内服务未 Running 则按失败处理
     Target m_target;
     Stage m_stage = Stage::Idle;
 };
