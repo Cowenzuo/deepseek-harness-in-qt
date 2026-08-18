@@ -16,6 +16,9 @@ UpdateManager::UpdateManager(AppSettings *settings, GitClient *git, DshProcessMa
     , m_proc(proc)
 {
     connect(m_proc, &DshProcessManager::stateChanged, this, &UpdateManager::onProcStateChanged);
+
+    m_startTimeout.setSingleShot(true);
+    connect(&m_startTimeout, &QTimer::timeout, this, [this] { fail(QStringLiteral("dsh 启动超时")); });
 }
 
 void UpdateManager::start(const Target &target)
@@ -66,6 +69,13 @@ void UpdateManager::runGitFetch()
         setStage(Stage::Checkout);
         beginCheckout();
     });
+    // FailedToStart 时 finished 不会触发，需单独兜底，避免流水线卡死
+    connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            fail(QStringLiteral("git 启动失败（gitPath 无效或权限不足）"));
+        }
+    });
 
     proc->start(QStringLiteral("git"),
                 ProxyDetector::gitProxyArgs() +
@@ -111,6 +121,12 @@ void UpdateManager::runGitPull()
         setStage(Stage::Install);
         beginInstall();
     });
+    connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            fail(QStringLiteral("git 启动失败（gitPath 无效或权限不足）"));
+        }
+    });
 
     proc->start(QStringLiteral("git"),
                 ProxyDetector::gitProxyArgs() + QStringList{QStringLiteral("pull"), QStringLiteral("--ff-only")});
@@ -134,6 +150,26 @@ void UpdateManager::beginStart()
 {
     setStage(Stage::Starting);
     emit logOutput(QStringLiteral("重新启动 dsh..."), false);
+
+    // 防护：服务已是 Running（如更新期间用户手动启动了服务）→ 直接完成，避免永久挂起
+    if (m_proc->isRunning()) {
+        done();
+        return;
+    }
+
+    m_startTimeout.start(60000); // 兜底：60s 内未 Running 则按失败处理
+
+    // 上次 stop 的 killByPort 尚未完成时，等 Idle 后再启动
+    if (m_proc->state() == DshProcessManager::State::Stopping) {
+        connect(m_proc, &DshProcessManager::stateChanged, this,
+                [this](DshProcessManager::State s) {
+                    if (s == DshProcessManager::State::Idle)
+                        m_proc->start();
+                },
+                Qt::SingleShotConnection);
+        return;
+    }
+
     m_proc->start();
 }
 
@@ -159,6 +195,12 @@ void UpdateManager::runPnpm(const QStringList &args, Stage nextStage)
         else if (nextStage == Stage::Starting)
             beginStart();
     });
+    connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            fail(QStringLiteral("pnpm 启动失败（pnpmPath 无效或权限不足）"));
+        }
+    });
 
     startWrapped(proc, pnpm, args);
 }
@@ -176,6 +218,7 @@ void UpdateManager::onProcStateChanged(DshProcessManager::State state)
 
 void UpdateManager::fail(const QString &error)
 {
+    m_startTimeout.stop();
     setStage(Stage::Failed);
     emit logOutput(error, true);
     setStage(Stage::Idle); // 先复位再通知结果，避免槽内同步发起新更新被 Idle 守卫拒绝
@@ -184,6 +227,7 @@ void UpdateManager::fail(const QString &error)
 
 void UpdateManager::done()
 {
+    m_startTimeout.stop();
     setStage(Stage::Done);
     setStage(Stage::Idle);
     emit finished(true, QString());

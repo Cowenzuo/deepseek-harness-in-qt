@@ -36,7 +36,11 @@ bool AppSettings::load()
         return false; // 配置文件损坏，保持默认值
     const QJsonObject o = doc.object();
     sourcePath = o.value(QLatin1String(kSourcePath)).toString(sourcePath);
-    webPort = o.value(QLatin1String(kWebPort)).toInt(webPort);
+    {
+        // 端口范围校验：手改/损坏的配置可能带 0、负数或超范围值，回退默认
+        const int port = o.value(QLatin1String(kWebPort)).toInt(webPort);
+        webPort = (port >= 1 && port <= 65535) ? port : 3080;
+    }
     nodePath = o.value(QLatin1String(kNodePath)).toString(nodePath);
     pnpmPath = o.value(QLatin1String(kPnpmPath)).toString(pnpmPath);
     gitPath = o.value(QLatin1String(kGitPath)).toString(gitPath);

@@ -328,6 +328,16 @@ void MainWindow::startClone()
         m_buildFromSetup = true;
         runBuildStep({QStringLiteral("install")});
     });
+    // FailedToStart 时 finished 不会触发，单独兜底
+    connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            m_logView->appendLog(QStringLiteral("git 启动失败（gitPath 无效或权限不足）"), true);
+            QMessageBox::warning(this, QStringLiteral("克隆失败"), QStringLiteral("git 启动失败，请检查 git 路径设置。"));
+            m_setupPage->recheck();
+            showSetupPage();
+        }
+    });
 
     QStringList gitArgs = ProxyDetector::gitProxyArgs();
     gitArgs << QStringLiteral("clone") << QStringLiteral("--progress") << url << target;
@@ -381,6 +391,18 @@ void MainWindow::runBuildStep(const QStringList &pnpmArgs)
                 showSetupPage();
             } else {
                 startService();
+            }
+        }
+    });
+    // FailedToStart 时 finished 不会触发，单独兜底
+    connect(proc, &QProcess::errorOccurred, this, [proc, pnpmArgs, this](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            proc->deleteLater();
+            m_logView->appendLog(QStringLiteral("pnpm 启动失败（pnpmPath 无效或权限不足）"), true);
+            if (m_buildFromSetup) {
+                QMessageBox::warning(this, QStringLiteral("构建失败"), QStringLiteral("pnpm 启动失败，请检查 pnpm 路径设置。"));
+                m_setupPage->recheck();
+                showSetupPage();
             }
         }
     });

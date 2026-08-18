@@ -62,7 +62,12 @@ void DshProcessManager::start()
 
     qDebug() << "[SVC] start() 异步清理后启动";
     // 异步清理可能残留的旧实例，避免端口冲突 / 连到旧服务
-    killByPort([this]() { beginLaunch(); });
+    const qint64 gen = ++m_opGeneration;
+    killByPort([this, gen]() {
+        if (gen != m_opGeneration)
+            return; // 过期操作（已被新的 start/stop/restart 取代）
+        beginLaunch();
+    }, gen);
 }
 
 void DshProcessManager::beginLaunch()
@@ -104,17 +109,20 @@ void DshProcessManager::stop()
     m_waiter->stop();
     m_pollTimer.stop();
 
+    const qint64 gen = ++m_opGeneration;
     if (m_state == State::Running || m_state == State::Starting) {
         setState(State::Stopping);
         emit logOutput(QStringLiteral("停止服务..."), false);
     }
 
     // 异步杀端口进程，完成后置 Idle
-    killByPort([this]() {
+    killByPort([this, gen]() {
+        if (gen != m_opGeneration)
+            return; // 迟到的 stop 回调不得打回 Idle / 删除新写入的记录
         clearServiceSource();
         setState(State::Idle);
         emit logOutput(QStringLiteral("服务已停止"), false);
-    });
+    }, gen);
 }
 
 void DshProcessManager::restart()
@@ -123,7 +131,12 @@ void DshProcessManager::restart()
     m_waiter->stop();
     m_pollTimer.stop();
     // 异步杀旧，完成后直接分离启动（不经过 Idle 中间态）
-    killByPort([this]() { beginLaunch(); });
+    const qint64 gen = ++m_opGeneration;
+    killByPort([this, gen]() {
+        if (gen != m_opGeneration)
+            return;
+        beginLaunch();
+    }, gen);
 }
 
 void DshProcessManager::ensureRunning()
@@ -195,26 +208,30 @@ void DshProcessManager::setState(State s)
     emit stateChanged(s);
 }
 
-void DshProcessManager::killByPort(std::function<void()> onDone)
+void DshProcessManager::killByPort(std::function<void()> onDone, qint64 generation)
 {
-    qDebug() << "[SVC] killByPort() 开始";
+    qDebug() << "[SVC] killByPort() 开始 gen=" << generation;
 #ifdef Q_OS_WIN
     // 异步 netstat 定位占用 webPort 的 PID（不阻塞主线程）
     auto *netstat = new QProcess(this);
     connect(netstat,
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this,
-            [this, netstat, onDone](int, QProcess::ExitStatus) {
+            [this, netstat, onDone, generation](int, QProcess::ExitStatus) {
                 const QString out = QString::fromLocal8Bit(netstat->readAllStandardOutput());
                 netstat->deleteLater();
 
-                const QString marker = QStringLiteral(":%1").arg(m_settings->webPort);
+                const QString portMarker = QLatin1Char(':') + QString::number(m_settings->webPort);
                 QList<int> pids;
                 for (const QString &line : out.split(QLatin1Char('\n'))) {
-                    if (!line.contains(marker) || !line.contains(QStringLiteral("LISTENING")))
+                    if (!line.contains(QStringLiteral("LISTENING")))
                         continue;
                     const QStringList fields = line.simplified().split(QLatin1Char(' '));
                     if (fields.size() < 5)
+                        continue;
+                    // 精确匹配本地地址字段（如 127.0.0.1:3080 / [::]:3080）的端口边界，
+                    // 避免 ":3080" 子串误命中 :30800 等端口
+                    if (!fields[1].endsWith(portMarker))
                         continue;
                     const int pid = fields.last().toInt();
                     if (pid > 0)
@@ -249,6 +266,7 @@ void DshProcessManager::killByPort(std::function<void()> onDone)
             });
     netstat->start(QStringLiteral("netstat"), {QStringLiteral("-ano")});
 #else
+    Q_UNUSED(generation)
     onDone();
 #endif
 }
@@ -284,12 +302,12 @@ void DshProcessManager::inspectAsync(std::function<void(const ServiceInfo &)> cb
                 netstat->deleteLater();
 
                 int pid = 0;
-                const QString marker = QStringLiteral(":%1").arg(port);
+                const QString portMarker = QLatin1Char(':') + QString::number(port);
                 for (const QString &line : out.split(QLatin1Char('\n'))) {
-                    if (!line.contains(marker) || !line.contains(QStringLiteral("LISTENING")))
+                    if (!line.contains(QStringLiteral("LISTENING")))
                         continue;
                     const QStringList fields = line.simplified().split(QLatin1Char(' '));
-                    if (fields.size() >= 5) {
+                    if (fields.size() >= 5 && fields[1].endsWith(portMarker)) {
                         pid = fields.last().toInt();
                         if (pid > 0)
                             break;

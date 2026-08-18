@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTimer>
 
 #include "process/dshprocessmanager.h"
 
@@ -50,6 +51,7 @@ private:
     AppSettings *m_settings = nullptr;
     GitClient *m_git = nullptr;
     DshProcessManager *m_proc = nullptr;
+    QTimer m_startTimeout; // Starting 阶段兜底：60s 内服务未 Running 则按失败处理
     Target m_target;
     Stage m_stage = Stage::Idle;
 };

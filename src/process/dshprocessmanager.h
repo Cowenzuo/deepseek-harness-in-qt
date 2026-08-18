@@ -56,7 +56,7 @@ private slots:
 private:
     void setState(State s);
     void beginLaunch();
-    void killByPort(std::function<void()> onDone);
+    void killByPort(std::function<void()> onDone, qint64 generation);
     void readLogTail();
     bool isServiceMatching(const QString &sourcePath) const;
     void writeServiceSource();
@@ -70,6 +70,7 @@ private:
     QString m_logPath;
     QString m_sourceFile;
     qint64 m_logPos = 0;
+    qint64 m_opGeneration = 0; // 操作代际：start/stop/restart 递增，过期异步回调据此丢弃
 };
 
 } // namespace dshinqt
