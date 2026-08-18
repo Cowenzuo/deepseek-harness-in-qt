@@ -1,7 +1,10 @@
-﻿# deepseek-harness 本地客户端外壳（dshinqt）技术方案
+# deepseek-harness 本地客户端外壳（dshinqt）技术方案
 
-> 文档状态：已同步至当前实现（对应 git commit `9a5a4ad`）。
+> 文档状态：已同步至当前实现（对应 git commit `9a5a4ad` 及后续 refactor）。
 > 本文描述**实际代码结构**与关键技术路径；早期设计中的差异在对应小节注明。
+>
+> **命名空间约定**：本工程全部 C++ 类型定义于 `namespace dshinqt` 内
+> （如 `dshinqt::DshProcessManager`），为简洁，正文与类图中省略 `dshinqt::` 前缀。
 
 ## 1. 环境前提
 

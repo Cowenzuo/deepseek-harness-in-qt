@@ -1,7 +1,9 @@
-﻿# deepseek-harness 本地客户端外壳（dshinqt）规格说明（定版）
+# deepseek-harness 本地客户端外壳（dshinqt）规格说明（定版）
 
-> 文档状态：已同步至当前实现（对应 git commit `9a5a4ad`）。
+> 文档状态：已同步至当前实现（对应 git commit `9a5a4ad` 及后续 refactor）。
 > 本文为**实现级规格**，与代码行为一一对应。
+>
+> **命名空间约定**：本工程全部 C++ 类型定义于 `namespace dshinqt` 内，正文省略前缀。
 
 ## 1. 概述
 
