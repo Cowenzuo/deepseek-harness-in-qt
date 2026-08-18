@@ -64,4 +64,17 @@ QStringList ProxyDetector::gitProxyArgs()
             QStringLiteral("https.proxy=") + proxy};
 }
 
+QProcessEnvironment ProxyDetector::pnpmEnvironment()
+{
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    const QString proxy = systemProxy();
+    if (!proxy.isEmpty()) {
+        env.insert(QStringLiteral("HTTPS_PROXY"), proxy);
+        env.insert(QStringLiteral("HTTP_PROXY"), proxy);
+        env.insert(QStringLiteral("https_proxy"), proxy);
+        env.insert(QStringLiteral("http_proxy"), proxy);
+    }
+    return env;
+}
+
 } // namespace dshinqt

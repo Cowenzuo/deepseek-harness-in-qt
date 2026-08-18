@@ -37,7 +37,7 @@ GitClient::GitClient(const AppSettings *settings, QObject *parent)
 QString GitClient::run(const QStringList &args, QString *errorOut, int timeoutMs)
 {
     QProcess p;
-    p.setProgram(QStringLiteral("git"));
+    p.setProgram(m_settings->gitProgram());
 
     // 自动注入系统代理（若已启用），让 fetch 等网络操作走代理
     QStringList fullArgs = ProxyDetector::gitProxyArgs();

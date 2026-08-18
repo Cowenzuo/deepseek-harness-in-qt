@@ -303,7 +303,7 @@ void MainWindow::startClone()
                             ? QStringLiteral("https://github.com/deepseek-ai/deepseek-harness.git")
                             : m_settings.repoUrl;
     const QString target = m_settings.sourcePath;
-    const QString git = m_settings.gitPath.isEmpty() ? QStringLiteral("git") : m_settings.gitPath;
+    const QString git = m_settings.gitProgram();
 
     // 切到 CLI 视口，完整呈现 git 输出（含 Receiving objects 进度）
     showLogPage();
@@ -354,15 +354,7 @@ void MainWindow::runBuildStep(const QStringList &pnpmArgs)
     proc->setProcessChannelMode(QProcess::MergedChannels);
 
     // pnpm 不读 Windows 系统代理，自动注入代理环境变量，使 npm 包下载走代理
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    const QString proxy = ProxyDetector::systemProxy();
-    if (!proxy.isEmpty()) {
-        env.insert(QStringLiteral("HTTPS_PROXY"), proxy);
-        env.insert(QStringLiteral("HTTP_PROXY"), proxy);
-        env.insert(QStringLiteral("https_proxy"), proxy);
-        env.insert(QStringLiteral("http_proxy"), proxy);
-    }
-    proc->setProcessEnvironment(env);
+    proc->setProcessEnvironment(ProxyDetector::pnpmEnvironment());
 
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         m_logView->appendLog(QString::fromUtf8(proc->readAllStandardOutput()));

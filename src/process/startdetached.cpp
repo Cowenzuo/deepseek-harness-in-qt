@@ -2,15 +2,6 @@
 
 namespace dshinqt {
 
-namespace {
-QString shellQuote(const QString &s)
-{
-    if (s.contains(QLatin1Char(' ')) || s.contains(QLatin1Char('"')))
-        return QLatin1Char('"') + s + QLatin1Char('"');
-    return s;
-}
-} // namespace
-
 #ifdef Q_OS_WIN
 
 #include <windows.h>

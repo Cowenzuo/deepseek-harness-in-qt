@@ -9,6 +9,14 @@
 
 namespace dshinqt {
 
+// 命令行参数引号化：含空格/双引号时用双引号包裹（供 cmd.exe /c 与 shell 拼接使用）
+inline QString shellQuote(const QString &s)
+{
+    return (s.contains(QLatin1Char(' ')) || s.contains(QLatin1Char('"')))
+               ? QLatin1Char('"') + s + QLatin1Char('"')
+               : s;
+}
+
 // Windows 下 pnpm/npm 等以 .cmd/.bat/.ps1 shim 形式存在，QProcess 无法直接执行，
 // 统一通过 cmd.exe /c 包装执行；有明确扩展名的可执行文件（node.exe、git.exe）直接启动。
 // 其他平台直接启动。
@@ -19,14 +27,9 @@ inline void startWrapped(QProcess *proc, const QString &program, const QStringLi
     const bool isShim =
         ext.isEmpty() || ext == QStringLiteral("cmd") || ext == QStringLiteral("bat") || ext == QStringLiteral("ps1");
     if (isShim) {
-        QString cmd = program;
-        for (const QString &a : args) {
-            cmd += QLatin1Char(' ');
-            if (a.contains(QLatin1Char(' ')) || a.contains(QLatin1Char('"')))
-                cmd += QLatin1Char('"') + a + QLatin1Char('"');
-            else
-                cmd += a;
-        }
+        QString cmd = shellQuote(program); // 程序路径也需引号化（含空格路径如 C:\Program Files\...）
+        for (const QString &a : args)
+            cmd += QLatin1Char(' ') + shellQuote(a);
         proc->start(QStringLiteral("cmd.exe"), {QStringLiteral("/c"), cmd});
         return;
     }

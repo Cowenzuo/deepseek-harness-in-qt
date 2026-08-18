@@ -77,7 +77,7 @@ void UpdateManager::runGitFetch()
         }
     });
 
-    proc->start(QStringLiteral("git"),
+    proc->start(m_settings->gitProgram(),
                 ProxyDetector::gitProxyArgs() +
                     QStringList{QStringLiteral("fetch"), QStringLiteral("--all"), QStringLiteral("--prune")});
 }
@@ -128,7 +128,7 @@ void UpdateManager::runGitPull()
         }
     });
 
-    proc->start(QStringLiteral("git"),
+    proc->start(m_settings->gitProgram(),
                 ProxyDetector::gitProxyArgs() + QStringList{QStringLiteral("pull"), QStringLiteral("--ff-only")});
 }
 
@@ -180,6 +180,7 @@ void UpdateManager::runPnpm(const QStringList &args, Stage nextStage)
     auto *proc = new QProcess(this);
     proc->setWorkingDirectory(m_settings->sourcePath);
     proc->setProcessChannelMode(QProcess::MergedChannels);
+    proc->setProcessEnvironment(ProxyDetector::pnpmEnvironment());
 
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);

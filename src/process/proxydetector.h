@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QProcessEnvironment>
 #include <QString>
 #include <QStringList>
 
@@ -15,6 +16,9 @@ public:
 
     // git 代理参数（如 -c http.proxy=... -c https.proxy=...）；无代理返回空
     static QStringList gitProxyArgs();
+
+    // pnpm 等子进程环境：系统环境 + 四组代理变量（pnpm 不读 Windows 系统代理）
+    static QProcessEnvironment pnpmEnvironment();
 
     // 把 host:port 补全成带协议的代理 URL
     static QString toProxyUrl(const QString &hostPort);
