@@ -1,8 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>app.ico</file>
-    </qresource>
-    <qresource prefix="/icons">
         <file>icons/settings.svg</file>
         <file>icons/settings-active.svg</file>
         <file>icons/log.svg</file>
