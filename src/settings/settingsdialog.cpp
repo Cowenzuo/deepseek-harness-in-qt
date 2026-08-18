@@ -1,4 +1,4 @@
-#include "settingsdialog.h"
+﻿#include "settingsdialog.h"
 
 #include <QHBoxLayout>
 #include <QListWidget>
@@ -24,6 +24,7 @@ SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateMana
     setWindowTitle(QStringLiteral("设置"));
     setModal(true);
     resize(900, 620);
+    setMinimumSize(760, 560); // 更新页（分支卡 250px + 提交列表）在窄窗口下不挤压
     setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
 
     // 深色卡片式样式（与引导页一致）
@@ -91,7 +92,7 @@ QTreeWidget::branch { background: transparent; }
     m_nav = new QListWidget(this);
     m_nav->setObjectName(QStringLiteral("nav"));
     m_nav->setFixedWidth(100);
-    m_nav->setFocusPolicy(Qt::NoFocus);
+    m_nav->setFocusPolicy(Qt::WheelFocus);
     const QStringList navTexts = {QStringLiteral("⚙\n常\n规"),
                                   QStringLiteral("◉\n服\n务"),
                                   QStringLiteral("⇄\n更\n新"),

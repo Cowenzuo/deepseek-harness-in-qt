@@ -1,4 +1,5 @@
-#include "homepage.h"
+﻿#include "homepage.h"
+#include "ui/theme.h"
 
 #include <QBoxLayout>
 #include <QColor>
@@ -15,7 +16,7 @@
 namespace dshinqt {
 
 namespace {
-const QColor kBg(18, 18, 18);
+
 
 // 正面就绪锚点：输入区(data-composer-card) + 会话区(data-conversation-scroll) 均挂载
 // = 聊天界面真正可用。只判“该出现的东西出现没有”，不枚举任何 warning。
@@ -32,7 +33,7 @@ HomePage::HomePage(QWidget *parent)
 {
     setAutoFillBackground(true);
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, kBg);
+    pal.setColor(QPalette::Window, Theme::windowBg());
     setPalette(pal);
 
     auto *layout = new QVBoxLayout(this);
@@ -50,27 +51,25 @@ void HomePage::ensureWebView()
     m_webView = new QWebEngineView(this);
     // 不透明深色背景（匹配界面底色）：不透明才不触发 WA_AlwaysStackOnTop（打洞穿透），
     // 才能被上层普通 widget 盖住；同时 Chromium 首帧前显示深色而非白。
-    m_webView->page()->setBackgroundColor(kBg);
+    m_webView->page()->setBackgroundColor(Theme::windowBg());
     m_webView->setAutoFillBackground(true);
     {
         QPalette webPal = m_webView->palette();
-        webPal.setColor(QPalette::Window, kBg);
-        webPal.setColor(QPalette::Base, kBg);
+        webPal.setColor(QPalette::Window, Theme::windowBg());
+        webPal.setColor(QPalette::Base, Theme::windowBg());
         m_webView->setPalette(webPal);
     }
     m_webView->setStyleSheet(QStringLiteral("QWebEngineView { background: #121212; }"));
 
     qobject_cast<QVBoxLayout *>(layout())->addWidget(m_webView); // ensureWebView 仅在构造末尾调用，layout 必为 QVBoxLayout
 
-    // 每次加载完成：先抓取渲染后的完整 body 保存到 config/webview-N.html 供对比（调试），
+    // 每次加载完成：先抓取渲染后的完整 body 保存到 config/webview-latest.html 供对比（调试，覆盖写），
     // 再启动正面锚点轮询，命中（输入区+会话区挂载）才认为界面就绪。
     connect(m_webView, &QWebEngineView::loadFinished, this, [this](bool ok) {
         qDebug() << "[UI] webview loadFinished ok=" << ok;
         m_webView->page()->toHtml([this](const QString &html) {
-            static int sN = 0;
-            ++sN;
             const QString path =
-                QCoreApplication::applicationDirPath() + QStringLiteral("/config/webview-%1.html").arg(sN);
+                QCoreApplication::applicationDirPath() + QStringLiteral("/config/webview-latest.html");
             QFile f(path);
             if (f.open(QIODevice::WriteOnly)) {
                 f.write(html.toUtf8());

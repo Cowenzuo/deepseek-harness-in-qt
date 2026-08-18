@@ -4,13 +4,13 @@
 #include <QFile>
 #include <QIcon>
 #include <QMutex>
-#include <QPalette>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
 #include <QStyleFactory>
 #include <QTextStream>
 
 #include "mainwindow.h"
+#include "ui/theme.h"
 
 using dshinqt::MainWindow;
 
@@ -52,27 +52,9 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(debugMessageHandler);
 
     // 全局深色主题：统一窗口、菜单栏、状态栏等系统组件为深色，
-    // 避免启动首帧/默认组件露出浅色（白闪）。
+    // 避免启动首帧/默认组件露出浅色（白闪）。色板单一来源见 ui/theme.h。
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
-    {
-        QPalette pal;
-        const QColor windowBg(18, 18, 18);
-        const QColor widgetBg(30, 30, 34);
-        pal.setColor(QPalette::Window, windowBg);
-        pal.setColor(QPalette::Base, windowBg);
-        pal.setColor(QPalette::AlternateBase, widgetBg);
-        pal.setColor(QPalette::WindowText, QColor(220, 220, 220));
-        pal.setColor(QPalette::Text, QColor(220, 220, 220));
-        pal.setColor(QPalette::Button, widgetBg);
-        pal.setColor(QPalette::ButtonText, QColor(220, 220, 220));
-        pal.setColor(QPalette::ToolTipBase, widgetBg);
-        pal.setColor(QPalette::ToolTipText, QColor(220, 220, 220));
-        pal.setColor(QPalette::Highlight, QColor(66, 120, 200));
-        pal.setColor(QPalette::HighlightedText, QColor(255, 255, 255));
-        pal.setColor(QPalette::Disabled, QPalette::Text, QColor(120, 120, 120));
-        pal.setColor(QPalette::Disabled, QPalette::WindowText, QColor(120, 120, 120));
-        app.setPalette(pal);
-    }
+    app.setPalette(dshinqt::Theme::darkPalette());
 
     qDebug() << "[main] MainWindow 构造前";
     MainWindow w;

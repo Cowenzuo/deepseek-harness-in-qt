@@ -1,4 +1,5 @@
-#include "setuppage.h"
+﻿#include "setuppage.h"
+#include "ui/theme.h"
 
 #include <QColor>
 #include <QDir>
@@ -27,7 +28,7 @@ SetupPage::SetupPage(AppSettings *settings, EnvironmentChecker *env, QWidget *pa
     setAutoFillBackground(true);
     {
         QPalette pal = palette();
-        pal.setColor(QPalette::Window, QColor(18, 18, 18));
+        pal.setColor(QPalette::Window, Theme::windowBg());
         setPalette(pal);
     }
     applyStyleSheet();

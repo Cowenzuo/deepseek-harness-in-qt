@@ -88,9 +88,7 @@ void ReadyWaiter::onFinished(QNetworkReply *reply)
 
 bool ReadyWaiter::isDshReady(const QByteArray &body) const
 {
-    // 正面判定：dsh boot 数据（__DSH_BOOT__）出现即服务层就绪。
-    // 不枚举/黑名单任何 warning——界面真正可用由 HomePage 的正面锚点（输入区/会话区）判定。
-    return body.contains("__DSH_BOOT__");
+    return dshBootInBody(body);
 }
 
 } // namespace dshinqt

@@ -2,11 +2,24 @@
 
 #include <QList>
 #include <QObject>
+#include <QRegularExpression>
 #include <QString>
 
 #include "settings/appsettings.h"
 
 namespace dshinqt {
+
+// node -v 输出解析（可测纯函数）：版本不低于 major.minor 返回 true；无法解析返回 false
+inline bool nodeVersionAtLeast(const QString &versionOutput, int major, int minor)
+{
+    static const QRegularExpression re(QStringLiteral("^v?(\\d+)\\.(\\d+)"));
+    const auto m = re.match(versionOutput);
+    if (!m.hasMatch())
+        return false;
+    const int vMajor = m.captured(1).toInt();
+    const int vMinor = m.captured(2).toInt();
+    return (vMajor > major) || (vMajor == major && vMinor >= minor);
+}
 
 struct EnvItem
 {
@@ -50,6 +63,7 @@ private:
     AppSettings m_asyncSettings;
     QStringList m_asyncNames;
     int m_asyncIndex = 0;
+    bool m_asyncRunning = false; // 校验链重入守卫
 };
 
 } // namespace dshinqt

@@ -1,4 +1,4 @@
-#include "servicepage.h"
+﻿#include "servicepage.h"
 
 #include <QCoreApplication>
 #include <QFrame>
@@ -37,7 +37,7 @@ ServiceSettingsPage::ServiceSettingsPage(AppSettings *settings, DshProcessManage
     m_svcSourceLabel = new QLabel(card);
     m_svcSourceLabel->setWordWrap(true);
     auto *portLabel = new QLabel(QStringLiteral("端口：%1").arg(m_settings->webPort), card);
-    auto *urlLabel = new QLabel(QStringLiteral("服务地址：http://127.0.0.1:%1").arg(m_settings->webPort), card);
+    auto *urlLabel = new QLabel(QStringLiteral("服务地址：%1").arg(m_settings->webUrl()), card);
     const QString logPath = QCoreApplication::applicationDirPath() + QStringLiteral("/config/dsh-web.log");
     auto *logLabel = new QLabel(QStringLiteral("日志：%1").arg(logPath), card);
     logLabel->setWordWrap(true);
@@ -67,7 +67,7 @@ ServiceSettingsPage::ServiceSettingsPage(AppSettings *settings, DshProcessManage
     m_svcRestartBtn->setObjectName(QStringLiteral("secondary"));
     for (QPushButton *b : {m_svcStartBtn, m_svcStopBtn, m_svcRestartBtn}) {
         b->setCursor(Qt::PointingHandCursor);
-        b->setFocusPolicy(Qt::NoFocus);
+        b->setFocusPolicy(Qt::TabFocus);
     }
     connect(m_svcStartBtn, &QPushButton::clicked, this, &ServiceSettingsPage::onStartService);
     connect(m_svcStopBtn, &QPushButton::clicked, this, &ServiceSettingsPage::onStopService);

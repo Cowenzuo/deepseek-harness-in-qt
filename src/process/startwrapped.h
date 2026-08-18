@@ -9,12 +9,14 @@
 
 namespace dshinqt {
 
-// 命令行参数引号化：含空格/双引号时用双引号包裹（供 cmd.exe /c 与 shell 拼接使用）
+// 命令行参数引号化：含空格/双引号时用双引号包裹并转义内嵌双引号（CRT 命令行解析规则）
 inline QString shellQuote(const QString &s)
 {
-    return (s.contains(QLatin1Char(' ')) || s.contains(QLatin1Char('"')))
-               ? QLatin1Char('"') + s + QLatin1Char('"')
-               : s;
+    if (!s.contains(QLatin1Char(' ')) && !s.contains(QLatin1Char('"')))
+        return s;
+    QString escaped = s;
+    escaped.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return QLatin1Char('"') + escaped + QLatin1Char('"');
 }
 
 // Windows 下 pnpm/npm 等以 .cmd/.bat/.ps1 shim 形式存在，QProcess 无法直接执行，

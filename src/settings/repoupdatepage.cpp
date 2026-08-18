@@ -19,6 +19,8 @@
 namespace dshinqt {
 
 namespace {
+const int kCommitPageSize = 60; // 提交列表每批条数
+
 // 后台线程执行：采集仓库信息。不捕获页面 this，仅使用 GitClient 指针（生命周期长于页面）
 // 与 sourcePath 快照，避免 use-after-free 与跨线程访问 AppSettings。
 RepoSnapshot collectSnapshot(GitClient *git, const QString &sourcePath)
@@ -31,7 +33,7 @@ RepoSnapshot collectSnapshot(GitClient *git, const QString &sourcePath)
     s.behind = behind;
     s.dirty = git->isDirty(sourcePath);
     s.branches = git->branches(sourcePath);
-    s.commits = git->commits(60, 0, sourcePath);
+    s.commits = git->commits(kCommitPageSize, 0, sourcePath);
     return s;
 }
 
@@ -80,7 +82,7 @@ RepoUpdatePage::RepoUpdatePage(AppSettings *settings, GitClient *git, UpdateMana
         auto *b = new QPushButton(text, this);
         b->setObjectName(QStringLiteral("secondary"));
         b->setCursor(Qt::PointingHandCursor);
-        b->setFocusPolicy(Qt::NoFocus);
+        b->setFocusPolicy(Qt::TabFocus);
         return b;
     };
     m_fetchBtn = makeBtn(QStringLiteral("Fetch 刷新"));
@@ -119,7 +121,7 @@ RepoUpdatePage::RepoUpdatePage(AppSettings *settings, GitClient *git, UpdateMana
     branchTitleRow->addWidget(m_switchBranchBtn);
     m_branchTree = new QTreeWidget(branchCard);
     m_branchTree->setHeaderHidden(true);
-    m_branchTree->setFocusPolicy(Qt::NoFocus);
+    m_branchTree->setFocusPolicy(Qt::TabFocus);
     m_branchTree->setColumnCount(1);
     connect(m_branchTree, &QTreeWidget::currentItemChanged, this, [this](QTreeWidgetItem *cur, QTreeWidgetItem *) {
         Q_UNUSED(cur);
@@ -147,7 +149,7 @@ RepoUpdatePage::RepoUpdatePage(AppSettings *settings, GitClient *git, UpdateMana
     commitTitleRow->addStretch(1);
     commitTitleRow->addWidget(m_switchCommitBtn);
     m_commitList = new QListWidget(commitCard);
-    m_commitList->setFocusPolicy(Qt::NoFocus);
+    m_commitList->setFocusPolicy(Qt::TabFocus);
     connect(m_commitList, &QListWidget::itemActivated, this, [this](QListWidgetItem *item) {
         onCommitActivated(m_commitList->row(item));
     });
@@ -289,7 +291,7 @@ void RepoUpdatePage::loadBranchCommits(const QString &rev)
     m_commitList->addItem(QStringLiteral("加载中..."));
     const QString src = m_settings->sourcePath;
     GitClient *git = m_git;
-    m_commitWatcher->setFuture(QtConcurrent::run([git, rev, src] { return git->commits(rev, 60, 0, src); }));
+    m_commitWatcher->setFuture(QtConcurrent::run([git, rev, src] { return git->commits(rev, kCommitPageSize, 0, src); }));
 }
 
 void RepoUpdatePage::onBranchTreeChanged()

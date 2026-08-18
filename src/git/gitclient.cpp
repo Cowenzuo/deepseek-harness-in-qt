@@ -10,26 +10,6 @@
 
 namespace dshinqt {
 
-namespace {
-QList<GitCommit> parseLog(const QString &out)
-{
-    QList<GitCommit> result;
-    const QStringList lines = out.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        const QStringList parts = line.split(QLatin1Char('\t'));
-        if (parts.size() < 4)
-            continue;
-        GitCommit c;
-        c.hash = parts[0];
-        c.author = parts[1];
-        c.date = parts[2];
-        c.message = parts.mid(3).join(QLatin1Char('\t')); // 消息自身含 \t 时拼回
-        result.append(c);
-    }
-    return result;
-}
-} // namespace
-
 GitClient::GitClient(const AppSettings *settings, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
@@ -143,7 +123,7 @@ QList<GitCommit> GitClient::commits(const QString &rev, int limit, int offset, c
     const QString out = run(args, cwd, &err);
     if (!err.isEmpty())
         return {};
-    return parseLog(out);
+    return parseGitLog(out);
 }
 
 QList<GitCommit> GitClient::searchCommits(const QString &keyword, int limit, const QString &cwd)
@@ -164,7 +144,7 @@ QList<GitCommit> GitClient::searchCommits(const QString &keyword, int limit, con
     const QString out = run(args, cwd, &err);
     if (!err.isEmpty())
         return {};
-    return parseLog(out);
+    return parseGitLog(out);
 }
 
 bool GitClient::aheadBehind(int *ahead, int *behind, const QString &cwd)

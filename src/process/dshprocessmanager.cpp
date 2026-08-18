@@ -15,18 +15,21 @@
 namespace dshinqt {
 
 namespace {
-const char *stateName(DshProcessManager::State s)
+// 反查兜底候选源码根：仅本机常见位置，可由配置/命令行解析优先命中覆盖
+const char *kFallbackSourceRoot = "D:/framework/deepseek-harness";
+} // namespace
+
+QString DshProcessManager::stateName(State s)
 {
     switch (s) {
-    case DshProcessManager::State::Idle: return "Idle";
-    case DshProcessManager::State::Starting: return "Starting";
-    case DshProcessManager::State::Running: return "Running";
-    case DshProcessManager::State::Stopping: return "Stopping";
-    case DshProcessManager::State::Crashed: return "Crashed";
+    case State::Idle: return QStringLiteral("Idle");
+    case State::Starting: return QStringLiteral("Starting");
+    case State::Running: return QStringLiteral("Running");
+    case State::Stopping: return QStringLiteral("Stopping");
+    case State::Crashed: return QStringLiteral("Crashed");
     }
-    return "?";
+    return QStringLiteral("?");
 }
-} // namespace
 
 DshProcessManager::DshProcessManager(AppSettings *settings, QObject *parent)
     : QObject(parent)
@@ -52,6 +55,13 @@ void DshProcessManager::attach()
 {
     qDebug() << "[SVC] attach() 服务已在运行，直接连接";
     emit logOutput(QStringLiteral("检测到 deepseek-harness 已在运行，直接连接"), false);
+    // 从文件尾开始 tail（跳过历史日志），并启动监督定时器
+    QFile f(m_logPath);
+    if (f.open(QIODevice::ReadOnly)) {
+        m_logPos = f.size();
+        f.close();
+    }
+    m_pollTimer.start();
     setState(State::Running);
 }
 
@@ -374,7 +384,7 @@ ServiceInfo DshProcessManager::parseServiceInfo(qint64 pid, const QString &raw) 
         if (idx > 0)
             candidates << p.left(idx);
     }
-    candidates << QStringLiteral("D:/framework/deepseek-harness");
+    candidates << QString::fromLatin1(kFallbackSourceRoot);
 
     for (const QString &cand : candidates) {
         const QString norm = QDir::fromNativeSeparators(cand);
@@ -405,19 +415,20 @@ void DshProcessManager::readLogTail()
             return;
         }
     }
-    const QByteArray chunk = f.readAll();
+    const QByteArray chunk = m_pendingLine + f.readAll(); // 与上次未闭合半行拼接
     m_logPos = f.pos();
     f.close();
-    if (chunk.isEmpty())
-        return;
 
     const QList<QByteArray> lines = chunk.split('\n');
-    for (const QByteArray &raw : lines) {
-        const QString line = QString::fromUtf8(raw).trimmed();
+    m_pendingLine = lines.last(); // 最后一段可能是不完整行（无结尾换行），留待下个 chunk
+    for (int i = 0; i < lines.size() - 1; ++i) {
+        const QString line = QString::fromUtf8(lines[i]).trimmed();
         if (line.isEmpty())
             continue;
         emit logOutput(line, false);
     }
+    if (chunk.isEmpty())
+        m_pendingLine.clear();
 }
 
 } // namespace dshinqt

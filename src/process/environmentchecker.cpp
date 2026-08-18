@@ -112,14 +112,8 @@ EnvItem EnvironmentChecker::checkOne(const QString &name, const AppSettings &set
             it.detail = QStringLiteral("未找到 Node.js，请安装 Node.js ≥ 22.19 或指定路径");
             return it;
         }
-        static const QRegularExpression re(QStringLiteral("^v?(\\d+)\\.(\\d+)"));
-        const auto m = re.match(ver);
         it.detail = ver;
-        if (m.hasMatch()) {
-            const int major = m.captured(1).toInt();
-            const int minor = m.captured(2).toInt();
-            it.passed = (major > 22) || (major == 22 && minor >= 19);
-        }
+        it.passed = nodeVersionAtLeast(ver, 22, 19);
         return it;
     }
 
@@ -136,6 +130,9 @@ EnvItem EnvironmentChecker::checkOne(const QString &name, const AppSettings &set
 
 void EnvironmentChecker::checkAsync(const AppSettings &settings)
 {
+    if (m_asyncRunning)
+        return; // 旧校验链仍在推进，忽略重入请求
+    m_asyncRunning = true;
     m_asyncSettings = settings;
     m_asyncNames = kCheckOrder;
     m_asyncIndex = 0;
@@ -145,6 +142,7 @@ void EnvironmentChecker::checkAsync(const AppSettings &settings)
 void EnvironmentChecker::runNext()
 {
     if (m_asyncIndex >= m_asyncNames.size()) {
+        m_asyncRunning = false;
         emit checkCompleted();
         return;
     }

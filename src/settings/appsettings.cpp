@@ -39,7 +39,7 @@ bool AppSettings::load()
     {
         // 端口范围校验：手改/损坏的配置可能带 0、负数或超范围值，回退默认
         const int port = o.value(QLatin1String(kWebPort)).toInt(webPort);
-        webPort = (port >= 1 && port <= 65535) ? port : 3080;
+        webPort = clampPort(port);
     }
     nodePath = o.value(QLatin1String(kNodePath)).toString(nodePath);
     pnpmPath = o.value(QLatin1String(kPnpmPath)).toString(pnpmPath);

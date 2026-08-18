@@ -30,6 +30,9 @@ public:
     enum class State { Idle, Starting, Running, Stopping, Crashed };
     Q_ENUM(State)
 
+    // 状态名映射（日志/状态栏共用，单一来源）
+    static QString stateName(State s);
+
     explicit DshProcessManager(AppSettings *settings, QObject *parent = nullptr);
     ~DshProcessManager() override;
 
@@ -70,6 +73,7 @@ private:
     QString m_logPath;
     QString m_sourceFile;
     qint64 m_logPos = 0;
+    QByteArray m_pendingLine; // 跨 chunk 未闭合的尾部半行缓冲
     qint64 m_opGeneration = 0; // 操作代际：start/stop/restart 递增，过期异步回调据此丢弃
 };
 

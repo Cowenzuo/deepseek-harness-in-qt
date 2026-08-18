@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 
 project(deepseek-harness-in-qt VERSION 0.1.0 LANGUAGES CXX)
 
@@ -47,6 +47,10 @@ if(MSVC)
         VS_DEBUGGER_ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$(PATH)"
     )
 endif()
+
+# ---------- 测试 ----------
+enable_testing()
+add_subdirectory(tests)
 
 # ---------- 安装规则 ----------
 # 可执行文件装到 <prefix>/bin；macOS 的 app bundle 装到 <prefix>

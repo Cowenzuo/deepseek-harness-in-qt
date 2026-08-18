@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 
 #include <QCloseEvent>
 #include <QColor>
@@ -15,6 +15,7 @@
 #include <QUrl>
 
 #include "git/gitclient.h"
+#include "ui/theme.h"
 #include "process/environmentchecker.h"
 #include "process/preflightchecker.h"
 #include "settings/settingsdialog.h"
@@ -26,20 +27,6 @@
 #include "update/updatemanager.h"
 
 namespace dshinqt {
-
-namespace {
-const char *stateName(DshProcessManager::State s)
-{
-    switch (s) {
-    case DshProcessManager::State::Idle: return "Idle";
-    case DshProcessManager::State::Starting: return "Starting";
-    case DshProcessManager::State::Running: return "Running";
-    case DshProcessManager::State::Stopping: return "Stopping";
-    case DshProcessManager::State::Crashed: return "Crashed";
-    }
-    return "?";
-}
-} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -142,7 +129,7 @@ MainWindow::MainWindow(QWidget *parent)
     auto *settingsBtn = new QPushButton(QStringLiteral(">"), this);
     settingsBtn->setFixedSize(16, 16);
     settingsBtn->setCursor(Qt::PointingHandCursor);
-    settingsBtn->setFocusPolicy(Qt::NoFocus);
+    settingsBtn->setFocusPolicy(Qt::TabFocus);
     settingsBtn->setToolTip(QStringLiteral("打开设置"));
     // 配色与全局深色主题一致
     settingsBtn->setStyleSheet(QStringLiteral(R"(
@@ -159,16 +146,16 @@ QPushButton:pressed { background: #2f3550; }
     // 状态栏工具按钮：日志 / 刷新
     auto *logBtn = new QPushButton(QStringLiteral("日志"), this);
     logBtn->setCursor(Qt::PointingHandCursor);
-    logBtn->setFocusPolicy(Qt::NoFocus);
+    logBtn->setFocusPolicy(Qt::TabFocus);
     connect(logBtn, &QPushButton::clicked, this, &MainWindow::showLogPage);
     statusBar()->addWidget(logBtn);
 
     auto *reloadBtn = new QPushButton(QStringLiteral("刷新"), this);
     reloadBtn->setCursor(Qt::PointingHandCursor);
-    reloadBtn->setFocusPolicy(Qt::NoFocus);
+    reloadBtn->setFocusPolicy(Qt::TabFocus);
     reloadBtn->setToolTip(QStringLiteral("重新加载 dsh Web UI（F5）"));
     connect(reloadBtn, &QPushButton::clicked, this, [this] {
-        m_homePage->load(QUrl(QStringLiteral("http://127.0.0.1:%1").arg(m_settings.webPort)));
+        m_homePage->load(QUrl(m_settings.webUrl()));
         showHomePage();
     });
     statusBar()->addWidget(reloadBtn);
@@ -190,6 +177,7 @@ QPushButton:pressed { background: #2f3550; }
     });
 
     resize(1280, 800);
+    setMinimumSize(980, 680); // 保证引导页卡片（最小宽约 716px）等页面内容不被裁切
     qDebug() << "[UI] === MainWindow 构造完成 ===";
 }
 
@@ -245,6 +233,8 @@ void MainWindow::onUpdateFinished(bool success, const QString &error)
         QMessageBox::warning(this, QStringLiteral("更新失败"), error);
         showLogPage();
     }
+    // 恢复为 dsh 运行状态文案（更新阶段文字只在 onUpdateStageChanged 中短暂覆盖）
+    onDshStateChanged(m_process->state());
 }
 
 void MainWindow::onSetupFinished()
@@ -306,7 +296,7 @@ void MainWindow::onErrorRetry()
 {
     if (m_process->isRunning()) {
         // 服务仍在运行，只是页面加载失败 → 页面级重试（load 会重置超时与自愈标记）
-        m_homePage->load(QUrl(QStringLiteral("http://127.0.0.1:%1").arg(m_settings.webPort)));
+        m_homePage->load(QUrl(m_settings.webUrl()));
         showHomePage();
     } else {
         startService();
@@ -352,7 +342,7 @@ void MainWindow::onBuildFinished(bool success, const QString &error, BuildFlowMa
 
 void MainWindow::onDshStateChanged(DshProcessManager::State state)
 {
-    qDebug() << "[UI] onDshStateChanged ->" << stateName(state);
+    qDebug() << "[UI] onDshStateChanged ->" << DshProcessManager::stateName(state);
     QString text;
     switch (state) {
     case DshProcessManager::State::Idle: text = QStringLiteral("未启动"); break;
@@ -360,7 +350,7 @@ void MainWindow::onDshStateChanged(DshProcessManager::State state)
     case DshProcessManager::State::Running:
         text = QStringLiteral("运行中");
         qDebug() << "[UI] Running -> 后台加载 webview（锚点就绪后再显示）port=" << m_settings.webPort;
-        m_homePage->load(QUrl(QStringLiteral("http://127.0.0.1:%1").arg(m_settings.webPort)));
+        m_homePage->load(QUrl(m_settings.webUrl()));
         // 不在此处 showHomePage()：等 HomePage::pageReady（输入区/会话区已挂载）再 raise 显示，
         // 避免用户看到 dsh 早期加载的 “failed to load plugins” 警告。
         break;

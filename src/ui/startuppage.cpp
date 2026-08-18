@@ -1,4 +1,5 @@
-#include "startuppage.h"
+﻿#include "startuppage.h"
+#include "ui/theme.h"
 
 #include <QColor>
 #include <QLabel>
@@ -15,7 +16,7 @@ StartupPage::StartupPage(QWidget *parent)
     setAutoFillBackground(true);
     {
         QPalette pal = palette();
-        pal.setColor(QPalette::Window, QColor(18, 18, 18));
+        pal.setColor(QPalette::Window, Theme::windowBg());
         setPalette(pal);
     }
 

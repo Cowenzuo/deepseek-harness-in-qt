@@ -11,6 +11,13 @@ class QNetworkReply;
 
 namespace dshinqt {
 
+// 服务层就绪判定（可测纯函数）：页面含 dsh boot 数据（__DSH_BOOT__）即就绪（正面信号）。
+// 界面层（插件激活/聊天界面挂载）由 HomePage 的正面锚点轮询判定，此处不枚举 warning。
+inline bool dshBootInBody(const QByteArray &body)
+{
+    return body.contains("__DSH_BOOT__");
+}
+
 class ReadyWaiter : public QObject
 {
     Q_OBJECT

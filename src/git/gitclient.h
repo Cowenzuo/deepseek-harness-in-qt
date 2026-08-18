@@ -23,6 +23,25 @@ struct GitCommit
     QString message;
 };
 
+// 提交行解析（可测纯函数）：输入 git log --pretty=format:%H%x09%an%x09%ad%x09%s 的输出，按行解析。
+inline QList<GitCommit> parseGitLog(const QString &out)
+{
+    QList<GitCommit> result;
+    const QStringList lines = out.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        const QStringList parts = line.split(QLatin1Char('\t'));
+        if (parts.size() < 4)
+            continue;
+        GitCommit c;
+        c.hash = parts[0];
+        c.author = parts[1];
+        c.date = parts[2];
+        c.message = parts.mid(3).join(QLatin1Char('\t')); // 消息自身含 \t 时拼回
+        result.append(c);
+    }
+    return result;
+}
+
 class GitClient : public QObject
 {
     Q_OBJECT
