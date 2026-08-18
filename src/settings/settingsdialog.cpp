@@ -53,6 +53,23 @@ RepoSnapshot collectSnapshot(GitClient *git, const QString &sourcePath)
     s.commits = git->commits(60, 0, sourcePath);
     return s;
 }
+
+QString stageText(UpdateManager::Stage s)
+{
+    switch (s) {
+    case UpdateManager::Stage::Stopping: return QStringLiteral("停止服务");
+    case UpdateManager::Stage::Fetch: return QStringLiteral("拉取");
+    case UpdateManager::Stage::Checkout: return QStringLiteral("切换");
+    case UpdateManager::Stage::Pull: return QStringLiteral("合并更新");
+    case UpdateManager::Stage::Install: return QStringLiteral("装依赖");
+    case UpdateManager::Stage::Build: return QStringLiteral("构建");
+    case UpdateManager::Stage::Starting: return QStringLiteral("启动");
+    case UpdateManager::Stage::Done: return QStringLiteral("完成");
+    case UpdateManager::Stage::Failed: return QStringLiteral("失败");
+    case UpdateManager::Stage::Idle: break;
+    }
+    return {};
+}
 } // namespace
 
 SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateManager *update, DshProcessManager *proc,
@@ -75,6 +92,20 @@ SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateMana
     connect(m_commitWatcher, &QFutureWatcher<QList<GitCommit>>::finished, this, &SettingsDialog::onBranchCommitsReady);
     connect(m_fetchWatcher, &QFutureWatcher<FetchResult>::finished, this, &SettingsDialog::onFetchFinished);
     connect(m_proc, &DshProcessManager::stateChanged, this, [this](DshProcessManager::State) { refreshServiceUi(); });
+    // 更新流水线阶段反馈：更新期间禁用操作按钮并显示阶段文字
+    connect(m_update, &UpdateManager::stageChanged, this, [this](UpdateManager::Stage s) {
+        const bool busy = (s != UpdateManager::Stage::Idle);
+        m_fetchBtn->setEnabled(!busy);
+        m_updateBtn->setEnabled(!busy);
+        m_switchBranchBtn->setEnabled(!busy);
+        m_switchCommitBtn->setEnabled(!busy);
+        m_cancelBtn->setVisible(busy);
+        m_stageLabel->setVisible(busy);
+        if (busy) {
+            m_stageLabel->setText(QStringLiteral("<span style='color:#e0a030;'>● 更新中：%1...</span>")
+                                      .arg(stageText(s)));
+        }
+    });
 
     // 深色卡片式样式（与引导页一致）
     setStyleSheet(QStringLiteral(R"(
@@ -393,19 +424,27 @@ QWidget *SettingsDialog::buildRepoUpdateTab()
     m_statusLabel = new QLabel(w);
     m_statusLabel->setTextFormat(Qt::RichText);
     m_statusLabel->setStyleSheet(QStringLiteral("font-size:13px;"));
+    m_stageLabel = new QLabel(w);
+    m_stageLabel->setTextFormat(Qt::RichText);
+    m_stageLabel->setVisible(false);
 
-    auto *fetchBtn = makeButton(QStringLiteral("Fetch 刷新"));
-    auto *updateBtn = makeButton(QStringLiteral("更新当前分支"));
-    connect(fetchBtn, &QPushButton::clicked, this, &SettingsDialog::onFetch);
-    connect(updateBtn, &QPushButton::clicked, this, &SettingsDialog::onUpdateCurrentBranch);
+    m_fetchBtn = makeButton(QStringLiteral("Fetch 刷新"));
+    m_updateBtn = makeButton(QStringLiteral("更新当前分支"));
+    m_cancelBtn = makeButton(QStringLiteral("取消更新"));
+    m_cancelBtn->setVisible(false);
+    connect(m_fetchBtn, &QPushButton::clicked, this, &SettingsDialog::onFetch);
+    connect(m_updateBtn, &QPushButton::clicked, this, &SettingsDialog::onUpdateCurrentBranch);
+    connect(m_cancelBtn, &QPushButton::clicked, m_update, &UpdateManager::cancel);
 
     auto *topRow = new QHBoxLayout;
     topRow->setSpacing(12);
     topRow->addWidget(m_branchLabel);
     topRow->addWidget(m_statusLabel);
+    topRow->addWidget(m_stageLabel);
     topRow->addStretch(1);
-    topRow->addWidget(fetchBtn);
-    topRow->addWidget(updateBtn);
+    topRow->addWidget(m_fetchBtn);
+    topRow->addWidget(m_updateBtn);
+    topRow->addWidget(m_cancelBtn);
     v->addLayout(topRow);
 
     // —— 左：分支树 ——
@@ -418,6 +457,7 @@ QWidget *SettingsDialog::buildRepoUpdateTab()
     auto *branchTitle = new QLabel(QStringLiteral("分支"), branchCard);
     branchTitle->setObjectName(QStringLiteral("pageTitle"));
     auto *switchBranchBtn = makeButton(QStringLiteral("切换到该分支"));
+    m_switchBranchBtn = switchBranchBtn;
     connect(switchBranchBtn, &QPushButton::clicked, this, &SettingsDialog::onSwitchBranch);
     auto *branchTitleRow = new QHBoxLayout;
     branchTitleRow->addWidget(branchTitle);
@@ -447,6 +487,7 @@ QWidget *SettingsDialog::buildRepoUpdateTab()
     auto *commitTitle = new QLabel(QStringLiteral("提交记录（双击行切换到此提交）"), commitCard);
     commitTitle->setObjectName(QStringLiteral("pageTitle"));
     auto *switchCommitBtn = makeButton(QStringLiteral("切换到该提交"));
+    m_switchCommitBtn = switchCommitBtn;
     connect(switchCommitBtn, &QPushButton::clicked, this, &SettingsDialog::onSwitchCommitSelected);
     auto *commitTitleRow = new QHBoxLayout;
     commitTitleRow->addWidget(commitTitle);

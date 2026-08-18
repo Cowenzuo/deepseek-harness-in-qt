@@ -283,6 +283,7 @@ void DshProcessManager::onWaiterReady()
 void DshProcessManager::onWaiterTimeout()
 {
     qDebug() << "[SVC] onWaiterTimeout 超时";
+    m_waiter->stop(); // 停掉 ReadyWaiter 的轮询定时器，避免对死端口无限探测
     m_pollTimer.stop();
     emit logOutput(QStringLiteral("等待 Web UI 就绪超时"), true);
     setState(State::Crashed);
@@ -397,8 +398,12 @@ void DshProcessManager::readLogTail()
     if (!f.open(QIODevice::ReadOnly))
         return;
     if (!f.seek(m_logPos)) {
-        f.close();
-        return;
+        // 文件被外部截短/重建：从头重读，恢复 tail 监督
+        m_logPos = 0;
+        if (!f.seek(0)) {
+            f.close();
+            return;
+        }
     }
     const QByteArray chunk = f.readAll();
     m_logPos = f.pos();

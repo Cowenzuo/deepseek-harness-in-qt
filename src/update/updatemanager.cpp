@@ -56,12 +56,17 @@ void UpdateManager::runGitFetch()
     auto *proc = new QProcess(this);
     proc->setWorkingDirectory(m_settings->sourcePath);
     proc->setProcessChannelMode(QProcess::MergedChannels);
+    m_currentProc = proc;
 
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);
     });
     connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus status) {
+        if (m_currentProc == proc)
+            m_currentProc = nullptr;
         proc->deleteLater();
+        if (m_stage == Stage::Idle)
+            return; // 已被 cancel 复位
         if (status != QProcess::NormalExit || code != 0) {
             fail(QStringLiteral("git fetch 失败（code=%1）").arg(code));
             return;
@@ -72,6 +77,8 @@ void UpdateManager::runGitFetch()
     // FailedToStart 时 finished 不会触发，需单独兜底，避免流水线卡死
     connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
         if (e == QProcess::FailedToStart) {
+            if (m_currentProc == proc)
+                m_currentProc = nullptr;
             proc->deleteLater();
             fail(QStringLiteral("git 启动失败（gitPath 无效或权限不足）"));
         }
@@ -108,12 +115,17 @@ void UpdateManager::runGitPull()
     auto *proc = new QProcess(this);
     proc->setWorkingDirectory(m_settings->sourcePath);
     proc->setProcessChannelMode(QProcess::MergedChannels);
+    m_currentProc = proc;
 
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);
     });
     connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus status) {
+        if (m_currentProc == proc)
+            m_currentProc = nullptr;
         proc->deleteLater();
+        if (m_stage == Stage::Idle)
+            return; // 已被 cancel 复位
         if (status != QProcess::NormalExit || code != 0) {
             fail(QStringLiteral("git pull 失败（code=%1）").arg(code));
             return;
@@ -123,6 +135,8 @@ void UpdateManager::runGitPull()
     });
     connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
         if (e == QProcess::FailedToStart) {
+            if (m_currentProc == proc)
+                m_currentProc = nullptr;
             proc->deleteLater();
             fail(QStringLiteral("git 启动失败（gitPath 无效或权限不足）"));
         }
@@ -181,12 +195,17 @@ void UpdateManager::runPnpm(const QStringList &args, Stage nextStage)
     proc->setWorkingDirectory(m_settings->sourcePath);
     proc->setProcessChannelMode(QProcess::MergedChannels);
     proc->setProcessEnvironment(ProxyDetector::pnpmEnvironment());
+    m_currentProc = proc;
 
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);
     });
     connect(proc, &QProcess::finished, this, [proc, nextStage, this](int code, QProcess::ExitStatus status) {
+        if (m_currentProc == proc)
+            m_currentProc = nullptr;
         proc->deleteLater();
+        if (m_stage == Stage::Idle)
+            return; // 已被 cancel 复位
         if (status != QProcess::NormalExit || code != 0) {
             fail(QStringLiteral("pnpm 命令失败（code=%1）").arg(code));
             return;
@@ -198,6 +217,8 @@ void UpdateManager::runPnpm(const QStringList &args, Stage nextStage)
     });
     connect(proc, &QProcess::errorOccurred, this, [proc, this](QProcess::ProcessError e) {
         if (e == QProcess::FailedToStart) {
+            if (m_currentProc == proc)
+                m_currentProc = nullptr;
             proc->deleteLater();
             fail(QStringLiteral("pnpm 启动失败（pnpmPath 无效或权限不足）"));
         }
@@ -219,6 +240,8 @@ void UpdateManager::onProcStateChanged(DshProcessManager::State state)
 
 void UpdateManager::fail(const QString &error)
 {
+    if (m_stage == Stage::Idle)
+        return; // 已被 cancel/finished 复位（防重入）
     m_startTimeout.stop();
     setStage(Stage::Failed);
     emit logOutput(error, true);
@@ -228,10 +251,22 @@ void UpdateManager::fail(const QString &error)
 
 void UpdateManager::done()
 {
+    if (m_stage == Stage::Idle)
+        return;
     m_startTimeout.stop();
     setStage(Stage::Done);
     setStage(Stage::Idle);
     emit finished(true, QString());
+}
+
+void UpdateManager::cancel()
+{
+    if (m_stage == Stage::Idle)
+        return;
+    if (m_currentProc) {
+        m_currentProc->kill(); // 其 finished 回调会因 m_stage==Idle 而直接返回
+    }
+    fail(QStringLiteral("更新已取消"));
 }
 
 } // namespace dshinqt

@@ -105,9 +105,15 @@ private:
     // 更新页
     QLabel *m_branchLabel = nullptr;     // 顶栏当前分支
     QLabel *m_statusLabel = nullptr;     // 顶栏同步状态（领先/落后/同步/无上游/错误）
+    QLabel *m_stageLabel = nullptr;      // 更新进行中的阶段文字（空闲时隐藏）
     QTreeWidget *m_branchTree = nullptr; // 分支树（本地/远程分组）
     QListWidget *m_commitList = nullptr; // 提交列表
     QList<GitCommit> m_commits;
+    QPushButton *m_fetchBtn = nullptr;          // Fetch 刷新
+    QPushButton *m_updateBtn = nullptr;         // 更新当前分支
+    QPushButton *m_switchBranchBtn = nullptr;   // 切换到该分支
+    QPushButton *m_switchCommitBtn = nullptr;   // 切换到该提交
+    QPushButton *m_cancelBtn = nullptr;         // 取消更新（更新期间显示）
 
     // 服务页
     QLabel *m_svcStatusLabel = nullptr; // 状态灯

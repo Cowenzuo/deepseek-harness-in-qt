@@ -1,6 +1,7 @@
 #include "gitclient.h"
 
 #include <QDate>
+#include <QElapsedTimer>
 #include <QProcess>
 #include <QRegularExpression>
 
@@ -22,7 +23,7 @@ QList<GitCommit> parseLog(const QString &out)
         c.hash = parts[0];
         c.author = parts[1];
         c.date = parts[2];
-        c.message = parts[3];
+        c.message = parts.mid(3).join(QLatin1Char('\t')); // 消息自身含 \t 时拼回
         result.append(c);
     }
     return result;
@@ -47,12 +48,16 @@ QString GitClient::run(const QStringList &args, const QString &cwd, QString *err
     p.setWorkingDirectory(cwd.isEmpty() ? m_settings->sourcePath : cwd);
     p.start();
 
+    // 单一总预算：waitForStarted + waitForFinished 共享 timeoutMs
+    QElapsedTimer timer;
+    timer.start();
     if (!p.waitForStarted(timeoutMs)) {
         if (errorOut)
             *errorOut = QStringLiteral("git 启动失败");
         return {};
     }
-    if (!p.waitForFinished(timeoutMs)) {
+    const qint64 left = timeoutMs - timer.elapsed();
+    if (!p.waitForFinished(left > 0 ? left : 1)) {
         if (errorOut)
             *errorOut = QStringLiteral("git 执行超时");
         return {};
@@ -202,9 +207,24 @@ bool GitClient::fetch(QString *errorOut, const QString &cwd)
 bool GitClient::checkoutBranch(const QString &name, QString *errorOut, const QString &cwd)
 {
     QString target = name;
-    const QString originPrefix = QStringLiteral("origin/");
-    if (target.startsWith(originPrefix))
-        target = target.mid(originPrefix.length());
+    const int slash = target.indexOf(QLatin1Char('/'));
+    if (slash > 0) {
+        // 远程跟踪分支（remote/xxx）：优先切本地同名分支（或 DWIM 自动建），
+        // 失败则基于远程分支显式建本地分支，避免 detached HEAD
+        const QString local = target.mid(slash + 1);
+        QString err;
+        run({QStringLiteral("checkout"), local}, cwd, &err);
+        if (err.isEmpty())
+            return true;
+        err.clear();
+        run({QStringLiteral("checkout"), QStringLiteral("-b"), local, target}, cwd, &err);
+        if (!err.isEmpty()) {
+            if (errorOut)
+                *errorOut = err;
+            return false;
+        }
+        return true;
+    }
 
     QString err;
     run({QStringLiteral("checkout"), target}, cwd, &err);
