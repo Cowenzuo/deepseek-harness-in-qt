@@ -124,46 +124,45 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_update, &UpdateManager::stageChanged, this, &MainWindow::onUpdateStageChanged);
     connect(m_update, &UpdateManager::finished, this, &MainWindow::onUpdateFinished);
 
-    // 状态栏：左侧圆点设置按钮 + 右侧状态消息 label。
+    // 状态栏：左侧图标按钮（设置/日志/刷新）+ 右侧状态消息 label。
     // 状态用 QLabel 而非 showMessage——showMessage 会隐藏 addWidget 的按钮。
-    auto *settingsBtn = new QPushButton(QStringLiteral(">"), this);
-    settingsBtn->setFixedSize(16, 16);
-    settingsBtn->setCursor(Qt::PointingHandCursor);
-    settingsBtn->setFocusPolicy(Qt::TabFocus);
-    settingsBtn->setToolTip(QStringLiteral("打开设置"));
-    // 配色与全局深色主题一致
-    settingsBtn->setStyleSheet(QStringLiteral(R"(
+    // 图标按钮统一：深色底 + 圆角，图标灰（Normal）/ 蓝（Active 即 hover）双色。
+    const QString iconBtnQss = QStringLiteral(R"(
 QPushButton {
-    background: #2c2c31; border: 1px solid #4f8cff; border-radius: 8px;
-    color: #4f8cff; font-size: 10px; font-weight: 700;
+    background: #2c2c31; border: 1px solid #38383e; border-radius: 8px;
+    margin-left: 6px;
 }
-QPushButton:hover { background: #35353b; color: #7ab0ff; border-color: #7ab0ff; }
+QPushButton:hover { background: #35353b; border-color: #4f8cff; }
 QPushButton:pressed { background: #2f3550; }
-)"));
+)");
+    const auto makeIconBtn = [this, iconBtnQss](const QString &normalIcon, const QString &activeIcon,
+                                                 const QString &tooltip) {
+        auto *btn = new QPushButton(this);
+        btn->setFixedSize(22, 18);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setFocusPolicy(Qt::TabFocus);
+        btn->setToolTip(tooltip);
+        btn->setStyleSheet(iconBtnQss);
+        btn->setIconSize(QSize(13, 13));
+        QIcon icon;
+        icon.addFile(normalIcon, QSize(), QIcon::Normal, QIcon::Off);
+        icon.addFile(activeIcon, QSize(), QIcon::Active, QIcon::Off);
+        btn->setIcon(icon);
+        return btn;
+    };
+
+    auto *settingsBtn = makeIconBtn(QStringLiteral(":/icons/settings.svg"), QStringLiteral(":/icons/settings-active.svg"),
+                                    QStringLiteral("打开设置"));
     connect(settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettings);
     statusBar()->addWidget(settingsBtn); // 左侧
 
-    // 状态栏工具按钮（日志 / 刷新）：与设置按钮同一深色蓝系，文字按钮带内边距与间距
-    const QString toolBtnQss = QStringLiteral(R"(
-QPushButton {
-    background: #2c2c31; border: 1px solid #38383e; border-radius: 8px;
-    padding: 2px 10px; color: #9a9aa0; font-size: 11px; margin-left: 6px;
-}
-QPushButton:hover { background: #35353b; border-color: #4f8cff; color: #ffffff; }
-QPushButton:pressed { background: #2f3550; }
-)");
-    auto *logBtn = new QPushButton(QStringLiteral("日志"), this);
-    logBtn->setCursor(Qt::PointingHandCursor);
-    logBtn->setFocusPolicy(Qt::TabFocus);
-    logBtn->setStyleSheet(toolBtnQss);
+    auto *logBtn = makeIconBtn(QStringLiteral(":/icons/log.svg"), QStringLiteral(":/icons/log-active.svg"),
+                               QStringLiteral("打开日志页"));
     connect(logBtn, &QPushButton::clicked, this, &MainWindow::showLogPage);
     statusBar()->addWidget(logBtn);
 
-    auto *reloadBtn = new QPushButton(QStringLiteral("刷新"), this);
-    reloadBtn->setCursor(Qt::PointingHandCursor);
-    reloadBtn->setFocusPolicy(Qt::TabFocus);
-    reloadBtn->setToolTip(QStringLiteral("重新加载 dsh Web UI（F5）"));
-    reloadBtn->setStyleSheet(toolBtnQss);
+    auto *reloadBtn = makeIconBtn(QStringLiteral(":/icons/refresh.svg"), QStringLiteral(":/icons/refresh-active.svg"),
+                                  QStringLiteral("刷新 dsh Web UI（F5）"));
     connect(reloadBtn, &QPushButton::clicked, this, [this] {
         m_homePage->load(QUrl(m_settings.webUrl()));
         showHomePage();
