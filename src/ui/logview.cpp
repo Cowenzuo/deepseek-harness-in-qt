@@ -23,31 +23,40 @@ LogView::LogView(QWidget *parent)
         pal.setColor(QPalette::Window, Theme::windowBg());
         setPalette(pal);
     }
-    // 顶部工具按钮：与全局 #secondary 风格一致的深色蓝系
+    // 顶部工具按钮：与状态栏图标按钮统一（深色底 + 圆角，hover 亮蓝边）
     setStyleSheet(QStringLiteral(R"(
 QPushButton#logTool {
-    background: #2c2c31; border: 1px solid #38383e; border-radius: 6px;
-    padding: 4px 12px; color: #9a9aa0; font-size: 12px;
+    background: #2c2c31; border: 1px solid #38383e; border-radius: 8px;
 }
-QPushButton#logTool:hover { background: #35353b; border-color: #4f8cff; color: #ffffff; }
+QPushButton#logTool:hover { background: #35353b; border-color: #4f8cff; }
 QPushButton#logTool:pressed { background: #2f3550; }
 )"));
 
-    // 顶部工具行：返回主页 + 清空
-    auto *backBtn = new QPushButton(QStringLiteral("← 返回主页"), this);
-    backBtn->setCursor(Qt::PointingHandCursor);
-    backBtn->setFocusPolicy(Qt::TabFocus);
-    backBtn->setObjectName(QStringLiteral("logTool"));
-    auto *clearBtn = new QPushButton(QStringLiteral("清空"), this);
-    clearBtn->setCursor(Qt::PointingHandCursor);
-    clearBtn->setFocusPolicy(Qt::TabFocus);
-    clearBtn->setObjectName(QStringLiteral("logTool"));
+    // 顶部工具行：返回主页 + 清空（图标按钮，灰/蓝双色）
+    const auto makeToolBtn = [this](const QString &normalIcon, const QString &activeIcon, const QString &tooltip) {
+        auto *btn = new QPushButton(this);
+        btn->setFixedSize(22, 18);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setFocusPolicy(Qt::TabFocus);
+        btn->setToolTip(tooltip);
+        btn->setObjectName(QStringLiteral("logTool"));
+        btn->setIconSize(QSize(13, 13));
+        QIcon icon;
+        icon.addFile(normalIcon, QSize(), QIcon::Normal, QIcon::Off);
+        icon.addFile(activeIcon, QSize(), QIcon::Active, QIcon::Off);
+        btn->setIcon(icon);
+        return btn;
+    };
+    auto *backBtn = makeToolBtn(QStringLiteral(":/icons/back.svg"), QStringLiteral(":/icons/back-active.svg"),
+                                QStringLiteral("返回主页"));
+    auto *clearBtn = makeToolBtn(QStringLiteral(":/icons/clear.svg"), QStringLiteral(":/icons/clear-active.svg"),
+                                 QStringLiteral("清空日志"));
     connect(backBtn, &QPushButton::clicked, this, &LogView::backRequested);
     connect(clearBtn, &QPushButton::clicked, this, &LogView::clearLog);
 
     auto *toolRow = new QHBoxLayout;
     toolRow->setContentsMargins(8, 6, 8, 6);
-    toolRow->setSpacing(8);
+    toolRow->setSpacing(6);
     toolRow->addWidget(backBtn);
     toolRow->addWidget(clearBtn);
     toolRow->addStretch(1);

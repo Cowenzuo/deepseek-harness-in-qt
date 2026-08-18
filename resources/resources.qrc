@@ -7,5 +7,9 @@
         <file>icons/log-active.svg</file>
         <file>icons/refresh.svg</file>
         <file>icons/refresh-active.svg</file>
+        <file>icons/back.svg</file>
+        <file>icons/back-active.svg</file>
+        <file>icons/clear.svg</file>
+        <file>icons/clear-active.svg</file>
     </qresource>
 </RCC>
