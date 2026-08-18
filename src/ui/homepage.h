@@ -19,8 +19,8 @@ class HomePage : public QWidget
 public:
     explicit HomePage(QWidget *parent = nullptr);
 
-    void load(const QUrl &url); // 导航到 Web UI
-    void shutdown();            // 退出前释放 webview
+    void load(const QUrl &url);
+    void shutdown(); // 退出前释放 webview，服务常驻不受影响
 
 signals:
     void pageReady();  // 正面锚点命中：输入区/会话区已挂载，界面可用

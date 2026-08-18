@@ -29,7 +29,10 @@ bool AppSettings::load()
     if (!f.open(QIODevice::ReadOnly))
         return false; // 无配置，保持默认值
 
-    const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (doc.isNull() || !doc.isObject())
+        return false; // 配置文件损坏，保持默认值
+    const QJsonObject o = doc.object();
     sourcePath = o.value(QLatin1String(kSourcePath)).toString(sourcePath);
     webPort = o.value(QLatin1String(kWebPort)).toInt(webPort);
     nodePath = o.value(QLatin1String(kNodePath)).toString(nodePath);
@@ -55,6 +58,6 @@ bool AppSettings::save() const
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
         return false;
-    f.write(QJsonDocument(o).toJson(QJsonDocument::Indented));
-    return true;
+    const QByteArray data = QJsonDocument(o).toJson(QJsonDocument::Indented);
+    return f.write(data) == data.size();
 }

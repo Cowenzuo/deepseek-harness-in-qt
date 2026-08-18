@@ -6,13 +6,10 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QMessageBox>
-#include <QMoveEvent>
 #include <QPalette>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
-#include <QResizeEvent>
-#include <QShowEvent>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QTimer>
@@ -99,11 +96,10 @@ MainWindow::MainWindow(QWidget *parent)
     m_errorPage = new ErrorPage(m_pages);
     m_pages->addWidget(m_errorPage);
 
-    // 日志页
     m_logView = new LogView(m_pages);
     m_pages->addWidget(m_logView);
 
-    // 主页（webview）：与 stackwidget 平级叠放，默认 lower 被盖住、常驻渲染
+    // 主页（webview）：与 stackwidget 平级叠放，常驻渲染
     m_homePage = new HomePage(central);
     lay->addWidget(m_homePage, 0, 0);
     m_homePage->lower();
@@ -144,7 +140,7 @@ MainWindow::MainWindow(QWidget *parent)
     settingsBtn->setCursor(Qt::PointingHandCursor);
     settingsBtn->setFocusPolicy(Qt::NoFocus);
     settingsBtn->setToolTip(QStringLiteral("打开设置"));
-    // 配色与全局一致：深色底(#2c2c31) + 蓝色强调(#4f8cff) + 浅蓝文字(#7ab0ff)
+    // 配色与全局深色主题一致
     settingsBtn->setStyleSheet(QStringLiteral(R"(
 QPushButton {
     background: #2c2c31; border: 1px solid #4f8cff; border-radius: 8px;
@@ -189,7 +185,7 @@ void MainWindow::showHomePage()
 void MainWindow::showLogPage()
 {
     qDebug() << "[UI] showLogPage";
-    m_homePage->lower(); // webview 退回下层
+    m_homePage->lower();
     m_pages->setCurrentWidget(m_logView);
 }
 
@@ -214,15 +210,13 @@ void MainWindow::onUpdateStageChanged(UpdateManager::Stage stage)
     case UpdateManager::Stage::Failed: text = QStringLiteral("失败"); break;
     case UpdateManager::Stage::Idle: return;
     }
-    if (m_statusLabel)
-        m_statusLabel->setText(QStringLiteral("更新：%1").arg(text));
+    m_statusLabel->setText(QStringLiteral("更新：%1").arg(text));
 }
 
 void MainWindow::onUpdateFinished(bool success, const QString &error)
 {
     if (success) {
-        if (m_statusLabel)
-            m_statusLabel->setText(QStringLiteral("更新完成"));
+        m_statusLabel->setText(QStringLiteral("更新完成"));
     } else {
         QMessageBox::warning(this, QStringLiteral("更新失败"), error);
         showLogPage();
@@ -233,8 +227,7 @@ void MainWindow::onSetupFinished()
 {
     qDebug() << "[UI] onSetupFinished 校验通过，启动服务（等 Running 再切主页）";
     m_settings.save();
-    if (m_statusLabel)
-        m_statusLabel->setText(QStringLiteral("环境配置完成"));
+    m_statusLabel->setText(QStringLiteral("环境配置完成"));
     // 保持加载页，更新状态文字；等 dsh Running 由 onDshStateChanged 切主页。
     m_startupPage->setStatus(QStringLiteral("正在启动服务..."));
     continueToService();
@@ -272,7 +265,7 @@ void MainWindow::startService()
 void MainWindow::showSetupPage()
 {
     qDebug() << "[UI] showSetupPage";
-    m_homePage->lower(); // webview 退回下层
+    m_homePage->lower();
     m_pages->setCurrentWidget(m_setupPage);
 }
 
@@ -281,7 +274,7 @@ void MainWindow::showErrorPage(const QString &message, bool canBuild)
     qDebug() << "[UI] showErrorPage canBuild=" << canBuild << "msg=" << message;
     m_errorPage->setMessage(message);
     m_errorPage->setBuildVisible(canBuild);
-    m_homePage->lower(); // webview 退回下层
+    m_homePage->lower();
     m_pages->setCurrentWidget(m_errorPage);
 }
 
@@ -414,8 +407,7 @@ void MainWindow::onDshStateChanged(DshProcessManager::State state)
         showErrorPage(QStringLiteral("deepseek-harness 启动失败，详见日志页。"), /*canBuild=*/false);
         break;
     }
-    if (m_statusLabel)
-        m_statusLabel->setText(QStringLiteral("dsh: %1").arg(text));
+    m_statusLabel->setText(QStringLiteral("dsh: %1").arg(text));
 }
 
 void MainWindow::onDshLog(const QString &line, bool isError)

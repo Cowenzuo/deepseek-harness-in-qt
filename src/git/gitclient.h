@@ -32,9 +32,8 @@ public:
     bool isDirty();
     QList<GitBranch> branches();
     QList<GitCommit> commits(int limit, int offset);
-    QList<GitCommit> commits(const QString &rev, int limit, int offset); // 指定分支/提交的提交列表
+    QList<GitCommit> commits(const QString &rev, int limit, int offset); // rev 为空时表示 HEAD
     QList<GitCommit> searchCommits(const QString &keyword, int limit = 200);
-    QString statusSummary();
     // 与上游相比的领先/落后提交数；无上游或失败返回 false
     bool aheadBehind(int *ahead, int *behind);
     bool fetch(QString *errorOut = nullptr);

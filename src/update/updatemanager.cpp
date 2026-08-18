@@ -30,7 +30,7 @@ void UpdateManager::start(const Target &target)
     if (m_proc->isRunning()) {
         setStage(Stage::Stopping);
         emit logOutput(QStringLiteral("停止 dsh..."), false);
-        m_proc->stop(); // 同步等待退出
+        m_proc->stop(); // 异步按端口杀进程树，与后续 fetch 并行无害
     }
 
     setStage(Stage::Fetch);
@@ -55,9 +55,9 @@ void UpdateManager::runGitFetch()
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);
     });
-    connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus) {
+    connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus status) {
         proc->deleteLater();
-        if (code != 0) {
+        if (status != QProcess::NormalExit || code != 0) {
             fail(QStringLiteral("git fetch 失败（code=%1）").arg(code));
             return;
         }
@@ -100,9 +100,9 @@ void UpdateManager::runGitPull()
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);
     });
-    connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus) {
+    connect(proc, &QProcess::finished, this, [proc, this](int code, QProcess::ExitStatus status) {
         proc->deleteLater();
-        if (code != 0) {
+        if (status != QProcess::NormalExit || code != 0) {
             fail(QStringLiteral("git pull 失败（code=%1）").arg(code));
             return;
         }
@@ -116,12 +116,14 @@ void UpdateManager::runGitPull()
 
 void UpdateManager::beginInstall()
 {
+    setStage(Stage::Install);
     emit logOutput(QStringLiteral("> pnpm install"), false);
     runPnpm({QStringLiteral("install")}, Stage::Build);
 }
 
 void UpdateManager::beginBuild()
 {
+    setStage(Stage::Build);
     emit logOutput(QStringLiteral("> pnpm run build"), false);
     runPnpm({QStringLiteral("run"), QStringLiteral("build")}, Stage::Starting);
 }
@@ -144,9 +146,9 @@ void UpdateManager::runPnpm(const QStringList &args, Stage nextStage)
     connect(proc, &QProcess::readyReadStandardOutput, this, [proc, this]() {
         emit logOutput(QString::fromUtf8(proc->readAllStandardOutput()), false);
     });
-    connect(proc, &QProcess::finished, this, [proc, nextStage, this](int code, QProcess::ExitStatus) {
+    connect(proc, &QProcess::finished, this, [proc, nextStage, this](int code, QProcess::ExitStatus status) {
         proc->deleteLater();
-        if (code != 0) {
+        if (status != QProcess::NormalExit || code != 0) {
             fail(QStringLiteral("pnpm 命令失败（code=%1）").arg(code));
             return;
         }
@@ -174,15 +176,13 @@ void UpdateManager::fail(const QString &error)
 {
     setStage(Stage::Failed);
     emit logOutput(error, true);
+    setStage(Stage::Idle); // 先复位再通知结果，避免槽内同步发起新更新被 Idle 守卫拒绝
     emit finished(false, error);
-    m_stage = Stage::Idle;
-    emit stageChanged(Stage::Idle);
 }
 
 void UpdateManager::done()
 {
     setStage(Stage::Done);
+    setStage(Stage::Idle);
     emit finished(true, QString());
-    m_stage = Stage::Idle;
-    emit stageChanged(Stage::Idle);
 }

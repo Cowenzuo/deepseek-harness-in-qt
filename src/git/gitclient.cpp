@@ -72,7 +72,11 @@ QString GitClient::currentBranch()
 
 bool GitClient::isDirty()
 {
-    return !run({QStringLiteral("status"), QStringLiteral("--porcelain")}).isEmpty();
+    QString err;
+    const QString out = run({QStringLiteral("status"), QStringLiteral("--porcelain")}, &err);
+    if (!err.isEmpty())
+        return true; // 状态检查失败时按"脏"处理，避免误放行更新
+    return !out.isEmpty();
 }
 
 QList<GitBranch> GitClient::branches()
@@ -80,7 +84,7 @@ QList<GitBranch> GitClient::branches()
     QList<GitBranch> result;
     const QString current = currentBranch();
 
-    // 本地分支
+    // 本地与远程分支（refs/heads / refs/remotes）
     {
         QString err;
         const QString out = run(
@@ -96,7 +100,6 @@ QList<GitBranch> GitClient::branches()
             }
         }
     }
-    // 远程分支
     {
         QString err;
         const QString out = run({QStringLiteral("for-each-ref"),
@@ -157,17 +160,6 @@ QList<GitCommit> GitClient::searchCommits(const QString &keyword, int limit)
     return parseLog(out);
 }
 
-QString GitClient::statusSummary()
-{
-    QString err;
-    const QString out = run({QStringLiteral("status"), QStringLiteral("--short")}, &err);
-    if (!err.isEmpty())
-        return QStringLiteral("git status 失败：%1").arg(err);
-    if (out.isEmpty())
-        return QStringLiteral("工作区干净");
-    return out;
-}
-
 bool GitClient::aheadBehind(int *ahead, int *behind)
 {
     QString err;
@@ -208,8 +200,9 @@ bool GitClient::fetch(QString *errorOut)
 bool GitClient::checkoutBranch(const QString &name, QString *errorOut)
 {
     QString target = name;
-    if (target.startsWith(QStringLiteral("origin/")))
-        target = target.mid(7);
+    const QString originPrefix = QStringLiteral("origin/");
+    if (target.startsWith(originPrefix))
+        target = target.mid(originPrefix.length());
 
     QString err;
     run({QStringLiteral("checkout"), target}, &err);
@@ -231,7 +224,7 @@ bool GitClient::checkoutCommit(const QString &hash, QString *errorOut)
     QString err;
     run({QStringLiteral("checkout"), branchName}, &err);
     if (err.isEmpty())
-        return true; // 分支已存在，直接检出
+        return true; // 同名分支已存在，直接检出
 
     err.clear();
     run({QStringLiteral("checkout"), QStringLiteral("-b"), branchName, hash}, &err);

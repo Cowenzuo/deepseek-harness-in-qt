@@ -38,7 +38,7 @@ DshProcessManager::DshProcessManager(AppSettings *settings, QObject *parent)
     connect(&m_pollTimer, &QTimer::timeout, this, &DshProcessManager::onPollTick);
 
     const QString dir = QCoreApplication::applicationDirPath() + QStringLiteral("/config");
-    QDir().mkpath(dir); // 确保 config 目录存在
+    QDir().mkpath(dir);
     m_logPath = QDir(dir).filePath(QStringLiteral("dsh-web.log"));
     m_sourceFile = QDir(dir).filePath(QStringLiteral("service-source.txt"));
 }
@@ -75,12 +75,10 @@ void DshProcessManager::beginLaunch()
          << QStringLiteral("web") << QStringLiteral("--host") << QStringLiteral("127.0.0.1") << QStringLiteral("--port")
          << QString::number(m_settings->webPort);
 
-    // 清空日志，准备增量读取
     QFile f(m_logPath);
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
         f.close();
     m_logPos = 0;
-
     setState(State::Starting);
 
     qDebug() << "[SVC] beginLaunch node=" << node << "port=" << m_settings->webPort;
@@ -249,7 +247,6 @@ void DshProcessManager::killByPort(std::function<void()> onDone)
             });
     netstat->start(QStringLiteral("netstat"), {QStringLiteral("-ano")});
 #else
-    Q_UNUSED(onDone)
     onDone();
 #endif
 }
@@ -319,7 +316,6 @@ void DshProcessManager::inspectAsync(std::function<void(const ServiceInfo &)> cb
             });
     netstat->start(QStringLiteral("netstat"), {QStringLiteral("-ano")});
 #else
-    Q_UNUSED(cb)
     cb(ServiceInfo());
 #endif
 }

@@ -58,8 +58,8 @@ void HomePage::ensureWebView()
     }
     m_webView->setStyleSheet(QStringLiteral("QWebEngineView { background: #121212; }"));
 
-    if (auto *box = qobject_cast<QBoxLayout *>(layout()))
-        box->addWidget(m_webView);
+    qobject_cast<QVBoxLayout *>(layout())->addWidget(m_webView); // ensureWebView 仅在构造末尾调用，layout 必为 QVBoxLayout
+
     // 每次加载完成：先抓取渲染后的完整 body 保存到 config/webview-N.html 供对比（调试），
     // 再启动正面锚点轮询，命中（输入区+会话区挂载）才认为界面就绪。
     connect(m_webView, &QWebEngineView::loadFinished, this, [this](bool ok) {
@@ -76,10 +76,8 @@ void HomePage::ensureWebView()
             }
             qDebug() << "[UI] webview body len=" << html.size() << "saved=" << path;
         });
-        // 重置就绪检查状态，开始新一轮锚点轮询
-        m_loadStart.start();
-        m_cycleStartMs = 0;
-        m_reloaded = false;
+        // 自愈 reload 也触发 loadFinished，此处不重置总超时计时与自愈标记：
+        // 总超时以 load() 为基准，自愈只允许一次，避免无限 reload
         startReadyCheck();
     });
     qDebug() << "[UI] HomePage webview 创建完成";
@@ -125,13 +123,16 @@ void HomePage::checkReadyOnce()
             emit pageFailed();
             return;
         }
-        // 未命中且未到动作点：继续轮询（事件驱动）
     });
 }
 
 void HomePage::load(const QUrl &url)
 {
     ensureWebView();
+    // 总超时与自愈标记以每次显式 load 为基准（reload 触发的 loadFinished 不重置）
+    m_loadStart.start();
+    m_cycleStartMs = 0;
+    m_reloaded = false;
     m_webView->load(url);
 }
 

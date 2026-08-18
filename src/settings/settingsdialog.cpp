@@ -49,7 +49,7 @@ SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateMana
     setWindowTitle(QStringLiteral("设置"));
     setModal(true);
     resize(900, 620);
-    setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint); // 支持最大化
+    setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
 
     connect(m_watcher, &QFutureWatcher<RepoSnapshot>::finished, this, &SettingsDialog::onRepoSnapshotReady);
     connect(m_commitWatcher, &QFutureWatcher<QList<GitCommit>>::finished, this, &SettingsDialog::onBranchCommitsReady);
@@ -491,7 +491,10 @@ void SettingsDialog::saveSettings()
     m_settings->pnpmPath = m_pnpmPathEdit->text().trimmed();
     m_settings->gitPath = m_gitPathEdit->text().trimmed();
     m_settings->repoUrl = m_repoUrlEdit->text().trimmed();
-    m_settings->save();
+    if (!m_settings->save()) {
+        QMessageBox::warning(this, QStringLiteral("设置"), QStringLiteral("配置保存失败。"));
+        return;
+    }
     refreshRepo();
     QMessageBox::information(this, QStringLiteral("设置"), QStringLiteral("配置已保存。"));
 }
@@ -676,8 +679,6 @@ void SettingsDialog::onSwitchCommitSelected()
 
 void SettingsDialog::onNavChanged(int row)
 {
-    if (!m_pages)
-        return; // 页面容器尚未创建（防御）
     if (row >= 0 && row < m_pages->count())
         m_pages->setCurrentIndex(row);
 }

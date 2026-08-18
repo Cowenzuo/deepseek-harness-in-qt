@@ -126,13 +126,11 @@ EnvItem EnvironmentChecker::checkOne(const QString &name, const AppSettings &set
         }
         static const QRegularExpression re(QStringLiteral("^v?(\\d+)\\.(\\d+)"));
         const auto m = re.match(ver);
+        it.detail = ver;
         if (m.hasMatch()) {
             const int major = m.captured(1).toInt();
             const int minor = m.captured(2).toInt();
             it.passed = (major > 22) || (major == 22 && minor >= 19);
-            it.detail = ver;
-        } else {
-            it.detail = ver;
         }
         return it;
     }

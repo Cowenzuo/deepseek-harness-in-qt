@@ -22,11 +22,11 @@ static void debugMessageHandler(QtMsgType type, const QMessageLogContext &contex
     QMutexLocker locker(&mutex);
     if (!file.isOpen()) {
         const QString dir = QCoreApplication::applicationDirPath() + QStringLiteral("/config");
-        const bool mkOk = QDir().mkpath(dir);
-        Q_UNUSED(mkOk);
+        if (!QDir().mkpath(dir))
+            return; // config 目录创建失败，放弃文件日志
         file.setFileName(dir + QStringLiteral("/debug.log"));
-        const bool openOk = file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
-        Q_UNUSED(openOk);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+            return; // 日志文件打不开，放弃文件日志
     }
     QTextStream ts(&file);
     ts << QDateTime::currentDateTime().toString(QStringLiteral("HH:mm:ss.zzz")) << ' ' << msg << '\n';

@@ -27,16 +27,18 @@ QString ProxyDetector::systemProxy()
 
     // 分号分隔的多协议配置（如 http=...;https=...;socks=...），优先 http/https
     const QStringList parts = server.split(QLatin1Char(';'), Qt::SkipEmptyParts);
+    bool hasScheme = false;
     for (const QString &part : parts) {
         const int eq = part.indexOf(QLatin1Char('='));
         if (eq > 0) {
+            hasScheme = true;
             const QString scheme = part.left(eq).trimmed().toLower();
             if (scheme == QStringLiteral("http") || scheme == QStringLiteral("https"))
                 return toProxyUrl(part.mid(eq + 1).trimmed());
         }
     }
-    // 无协议标记，整体作为 http 代理
-    return toProxyUrl(server);
+    // 无协议标记，整体作为 http 代理；仅含 socks 等协议时跳过注入（避免拼出非法 URL）
+    return hasScheme ? QString() : toProxyUrl(server);
 #else
     // Unix/macOS：代理工具一般通过环境变量暴露
     static const char *keys[] = {"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"};

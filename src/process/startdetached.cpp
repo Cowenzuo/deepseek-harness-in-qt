@@ -1,5 +1,14 @@
 ﻿#include "startwrapped.h"
 
+namespace {
+QString shellQuote(const QString &s)
+{
+    if (s.contains(QLatin1Char(' ')) || s.contains(QLatin1Char('"')))
+        return QLatin1Char('"') + s + QLatin1Char('"');
+    return s;
+}
+} // namespace
+
 #ifdef Q_OS_WIN
 
 #include <windows.h>
@@ -39,7 +48,6 @@ bool startDetachedWrapped(const QString &program, const QStringList &args, const
                               FILE_ATTRIBUTE_NORMAL,
                               nullptr);
 
-    // stdin 指向 NUL 设备
     HANDLE hNul =
         CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hLog == INVALID_HANDLE_VALUE)
@@ -74,8 +82,8 @@ bool startDetachedWrapped(const QString &program, const QStringList &args, const
                                    &si,
                                    &pi);
 
-    if (hLog != INVALID_HANDLE_VALUE)
-        CloseHandle(hLog);
+    if (hLog != INVALID_HANDLE_VALUE && hLog != hNul)
+        CloseHandle(hLog); // hLog 回退到 hNul 时避免重复关闭
     if (hNul != INVALID_HANDLE_VALUE)
         CloseHandle(hNul);
 
