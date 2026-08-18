@@ -13,7 +13,8 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_PREFIX_PATH": "D:/framework/qt6/6.11.1/msvc2022_64"
+        "CMAKE_PREFIX_PATH": "D:/framework/qt6/6.11.1/msvc2022_64",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
       }
     }
   ],

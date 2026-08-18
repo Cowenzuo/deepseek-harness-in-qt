@@ -11,43 +11,14 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets Concurrent)
 
+# 搜集 src/ 下全部源文件（CONFIGURE_DEPENDS：新增/删除文件时自动重新配置）
+file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+)
+
 qt_add_executable(deepseek-harness-in-qt
-    src/main.cpp
-    src/mainwindow.cpp
-    src/mainwindow.h
-    src/settings/appsettings.cpp
-    src/settings/appsettings.h
-    src/settings/settingsdialog.cpp
-    src/settings/settingsdialog.h
-    src/process/preflightchecker.cpp
-    src/process/preflightchecker.h
-    src/process/environmentchecker.cpp
-    src/process/environmentchecker.h
-    src/process/proxydetector.cpp
-    src/process/proxydetector.h
-    src/process/startdetached.cpp
-    src/process/readywaiter.cpp
-    src/process/readywaiter.h
-    src/process/dshprocessmanager.cpp
-    src/process/dshprocessmanager.h
-    src/ui/logview.cpp
-    src/ui/logview.h
-    src/ui/homepage.cpp
-    src/ui/homepage.h
-    src/ui/startuppage.cpp
-    src/ui/startuppage.h
-    src/ui/setuppage.cpp
-    src/ui/setuppage.h
-    src/ui/errorpage.cpp
-    src/ui/errorpage.h
-    src/git/gitclient.cpp
-    src/git/gitclient.h
-    src/ui/branchdialog.cpp
-    src/ui/branchdialog.h
-    src/ui/commitdialog.cpp
-    src/ui/commitdialog.h
-    src/update/updatemanager.cpp
-    src/update/updatemanager.h
+    ${APP_SOURCES}
     resources/resources.qrc
 )
 
@@ -74,3 +45,19 @@ if(MSVC)
         VS_DEBUGGER_ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$(PATH)"
     )
 endif()
+
+# ---------- 安装规则 ----------
+# 可执行文件装到 <prefix>/bin；macOS 的 app bundle 装到 <prefix>
+install(TARGETS deepseek-harness-in-qt
+    RUNTIME DESTINATION bin
+    BUNDLE  DESTINATION .
+)
+
+# 生成部署脚本（Windows 用 windeployqt / macOS 用 macdeployqt），
+# 随 install 自动把 Qt 运行时（含 QtWebEngineProcess.exe）拷到安装目录。
+qt_generate_deploy_app_script(
+    TARGET deepseek-harness-in-qt
+    OUTPUT_SCRIPT deploy_script
+    NO_UNSUPPORTED_PLATFORM_ERROR
+)
+install(SCRIPT ${deploy_script})
