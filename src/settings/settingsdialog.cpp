@@ -36,6 +36,22 @@ QLabel *fieldTitle(const QString &text, QWidget *parent)
     l->setObjectName(QStringLiteral("fieldTitle"));
     return l;
 }
+
+// 后台线程执行：采集仓库信息。不捕获对话框 this，仅使用 GitClient 指针（生命周期长于对话框）
+// 与 sourcePath 快照，避免 use-after-free 与跨线程访问 AppSettings。
+RepoSnapshot collectSnapshot(GitClient *git, const QString &sourcePath)
+{
+    RepoSnapshot s;
+    s.branch = git->currentBranch(sourcePath);
+    int ahead = 0, behind = 0;
+    s.aheadValid = git->aheadBehind(&ahead, &behind, sourcePath);
+    s.ahead = ahead;
+    s.behind = behind;
+    s.dirty = git->isDirty(sourcePath);
+    s.branches = git->branches(sourcePath);
+    s.commits = git->commits(60, 0, sourcePath);
+    return s;
+}
 } // namespace
 
 SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateManager *update, DshProcessManager *proc,
@@ -47,6 +63,7 @@ SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateMana
     , m_proc(proc)
     , m_watcher(new QFutureWatcher<RepoSnapshot>(this))
     , m_commitWatcher(new QFutureWatcher<QList<GitCommit>>(this))
+    , m_fetchWatcher(new QFutureWatcher<FetchResult>(this))
 {
     setWindowTitle(QStringLiteral("设置"));
     setModal(true);
@@ -55,6 +72,7 @@ SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateMana
 
     connect(m_watcher, &QFutureWatcher<RepoSnapshot>::finished, this, &SettingsDialog::onRepoSnapshotReady);
     connect(m_commitWatcher, &QFutureWatcher<QList<GitCommit>>::finished, this, &SettingsDialog::onBranchCommitsReady);
+    connect(m_fetchWatcher, &QFutureWatcher<FetchResult>::finished, this, &SettingsDialog::onFetchFinished);
     connect(m_proc, &DshProcessManager::stateChanged, this, [this](DshProcessManager::State) { refreshServiceUi(); });
 
     // 深色卡片式样式（与引导页一致）
@@ -162,6 +180,15 @@ QTreeWidget::branch { background: transparent; }
             m_svcPidLabel->setText(QStringLiteral("PID：无（端口无服务）"));
         }
     });
+}
+
+SettingsDialog::~SettingsDialog()
+{
+    // 等待后台 git 线程结束：线程不捕获 this（仅用 GitClient 指针与快照），
+    // 但写配置前串行化可杜绝与 saveSettings 的并发访问。
+    m_watcher->waitForFinished();
+    m_commitWatcher->waitForFinished();
+    m_fetchWatcher->waitForFinished();
 }
 
 QWidget *SettingsDialog::buildServiceTab()
@@ -273,12 +300,32 @@ void SettingsDialog::onStartService()
 
 void SettingsDialog::onStopService()
 {
+    if (!confirmServiceInterrupt(QStringLiteral("停止服务")))
+        return;
     m_proc->stop();
 }
 
 void SettingsDialog::onRestartService()
 {
+    if (!confirmServiceInterrupt(QStringLiteral("重启服务")))
+        return;
     m_proc->restart();
+}
+
+bool SettingsDialog::confirmServiceInterrupt(const QString &action)
+{
+    return QMessageBox::question(this, QStringLiteral("确认"),
+                                 QStringLiteral("%1 将终止当前 dsh 服务，正在进行的对话会立即中断。继续？")
+                                     .arg(action),
+                                 QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+           == QMessageBox::Yes;
+}
+
+void SettingsDialog::beginUpdate(const UpdateManager::Target &target)
+{
+    if (!confirmServiceInterrupt(QStringLiteral("更新（将停止服务、切换版本并重新构建，可能需数分钟）")))
+        return;
+    m_update->start(target); // 更新在后台执行，对话框保留
 }
 
 QWidget *SettingsDialog::buildGeneralTab()
@@ -487,6 +534,11 @@ void SettingsDialog::saveSettings()
         QMessageBox::warning(this, QStringLiteral("设置"), QStringLiteral("源码路径无效：未找到 pnpm-workspace.yaml"));
         return;
     }
+    // 写配置前等待在途后台 git 线程结束，避免跨线程读写 AppSettings
+    m_watcher->waitForFinished();
+    m_commitWatcher->waitForFinished();
+    m_fetchWatcher->waitForFinished();
+
     m_settings->sourcePath = path;
     m_settings->webPort = m_portSpin->value();
     m_settings->nodePath = m_nodePathEdit->text().trimmed();
@@ -509,21 +561,9 @@ void SettingsDialog::refreshRepo()
     m_statusLabel->setText(QStringLiteral("<span style='color:#9a9a9a;'>● 正在刷新仓库信息...</span>"));
     m_branchTree->clear();
     m_commitList->clear();
-    m_watcher->setFuture(QtConcurrent::run([this] { return collectSnapshot(); }));
-}
-
-RepoSnapshot SettingsDialog::collectSnapshot()
-{
-    RepoSnapshot s;
-    s.branch = m_git->currentBranch();
-    int ahead = 0, behind = 0;
-    s.aheadValid = m_git->aheadBehind(&ahead, &behind);
-    s.ahead = ahead;
-    s.behind = behind;
-    s.dirty = m_git->isDirty();
-    s.branches = m_git->branches();
-    s.commits = m_git->commits(60, 0);
-    return s;
+    const QString src = m_settings->sourcePath;
+    GitClient *git = m_git;
+    m_watcher->setFuture(QtConcurrent::run([git, src] { return collectSnapshot(git, src); }));
 }
 
 void SettingsDialog::onRepoSnapshotReady()
@@ -605,7 +645,9 @@ void SettingsDialog::loadBranchCommits(const QString &rev)
         return;
     m_commitList->clear();
     m_commitList->addItem(QStringLiteral("加载中..."));
-    m_commitWatcher->setFuture(QtConcurrent::run([this, rev] { return m_git->commits(rev, 60, 0); }));
+    const QString src = m_settings->sourcePath;
+    GitClient *git = m_git;
+    m_commitWatcher->setFuture(QtConcurrent::run([git, rev, src] { return git->commits(rev, 60, 0, src); }));
 }
 
 void SettingsDialog::onBranchTreeChanged()
@@ -627,10 +669,24 @@ void SettingsDialog::onBranchCommitsReady()
 
 void SettingsDialog::onFetch()
 {
-    QString err;
-    if (!m_git->fetch(&err)) {
+    if (m_fetchWatcher->isRunning())
+        return;
+    m_statusLabel->setText(QStringLiteral("<span style='color:#9a9a9a;'>● Fetching...</span>"));
+    const QString src = m_settings->sourcePath;
+    GitClient *git = m_git;
+    m_fetchWatcher->setFuture(QtConcurrent::run([git, src]() {
+        FetchResult r;
+        r.ok = git->fetch(&r.err, src);
+        return r;
+    }));
+}
+
+void SettingsDialog::onFetchFinished()
+{
+    const FetchResult r = m_fetchWatcher->result();
+    if (!r.ok) {
         m_statusLabel->setText(
-            QStringLiteral("<span style='color:#e06060;'>● Fetch 失败：%1</span>").arg(err.toHtmlEscaped()));
+            QStringLiteral("<span style='color:#e06060;'>● Fetch 失败：%1</span>").arg(r.err.toHtmlEscaped()));
         return;
     }
     refreshRepo();
@@ -644,7 +700,7 @@ void SettingsDialog::onCommitActivated(int row)
     UpdateManager::Target t;
     t.kind = UpdateManager::Target::Commit;
     t.value = hash;
-    m_update->start(t); // 更新在后台执行，对话框保留
+    beginUpdate(t);
 }
 
 void SettingsDialog::onUpdateCurrentBranch()
@@ -657,7 +713,7 @@ void SettingsDialog::onUpdateCurrentBranch()
     UpdateManager::Target t;
     t.kind = UpdateManager::Target::Branch;
     t.value = branch;
-    m_update->start(t); // 更新在后台执行，对话框保留
+    beginUpdate(t);
 }
 
 void SettingsDialog::onSwitchBranch()
@@ -671,7 +727,7 @@ void SettingsDialog::onSwitchBranch()
     UpdateManager::Target t;
     t.kind = UpdateManager::Target::Branch;
     t.value = name;
-    m_update->start(t); // 切换在后台执行，对话框保留
+    beginUpdate(t);
 }
 
 void SettingsDialog::onSwitchCommitSelected()

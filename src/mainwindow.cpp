@@ -282,7 +282,13 @@ void MainWindow::showErrorPage(const QString &message, bool canBuild)
 
 void MainWindow::onErrorRetry()
 {
-    startService();
+    if (m_process->isRunning()) {
+        // 服务仍在运行，只是页面加载失败 → 页面级重试（load 会重置超时与自愈标记）
+        m_homePage->load(QUrl(QStringLiteral("http://127.0.0.1:%1").arg(m_settings.webPort)));
+        showHomePage();
+    } else {
+        startService();
+    }
 }
 
 void MainWindow::onErrorBuild()

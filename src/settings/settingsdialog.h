@@ -5,6 +5,7 @@
 #include <QList>
 
 #include "git/gitclient.h"
+#include "update/updatemanager.h"
 
 class QLabel;
 class QLineEdit;
@@ -32,6 +33,13 @@ struct RepoSnapshot
     QList<GitCommit> commits;
 };
 
+// Fetch 后台执行结果
+struct FetchResult
+{
+    bool ok = false;
+    QString err;
+};
+
 // 统一设置弹窗：左侧竖向导航（常规 / 服务 / 更新 / 关于）+ 右侧页面。
 // 更新页 = 实用的 git 页面：分支树 + 提交列表，快速查看、
 // 选定分支/提交切换或更新当前分支。全部一页内完成，不弹任何子窗口。
@@ -42,6 +50,7 @@ class SettingsDialog : public QDialog
 public:
     explicit SettingsDialog(AppSettings *settings, GitClient *git, UpdateManager *update, DshProcessManager *proc,
                             QWidget *parent = nullptr);
+    ~SettingsDialog() override; // 等待后台 git 线程结束，避免访问已析构对象
 
 private slots:
     void saveSettings();
@@ -53,6 +62,7 @@ private slots:
     void onSwitchCommitSelected();   // 切换到提交列表选中的提交
     void onBranchTreeChanged();      // 点击分支 → 异步加载该分支提交
     void onBranchCommitsReady();     // 分支提交加载完成
+    void onFetchFinished();          // 后台 fetch 完成，更新 UI
     void onCommitActivated(int row); // 双击提交列表行 → 切换到此提交
     void onNavChanged(int row);      // 左侧导航切换页面
     void onStartService();
@@ -69,7 +79,8 @@ private:
     void populateBranchTree(const QList<GitBranch> &branches);
     void loadBranchCommits(const QString &rev);
     void refreshServiceUi();
-    RepoSnapshot collectSnapshot(); // 后台线程执行：采集仓库信息
+    bool confirmServiceInterrupt(const QString &action); // 危险操作确认（停止/重启/更新）
+    void beginUpdate(const UpdateManager::Target &target); // 更新统一入口（含确认）
 
     AppSettings *m_settings = nullptr;
     GitClient *m_git = nullptr;
@@ -77,6 +88,7 @@ private:
     DshProcessManager *m_proc = nullptr;
     QFutureWatcher<RepoSnapshot> *m_watcher = nullptr;
     QFutureWatcher<QList<GitCommit>> *m_commitWatcher = nullptr;
+    QFutureWatcher<FetchResult> *m_fetchWatcher = nullptr;
 
     // 左侧导航 + 页面容器
     QListWidget *m_nav = nullptr;

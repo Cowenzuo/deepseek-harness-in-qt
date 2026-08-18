@@ -34,7 +34,7 @@ GitClient::GitClient(const AppSettings *settings, QObject *parent)
     , m_settings(settings)
 {}
 
-QString GitClient::run(const QStringList &args, QString *errorOut, int timeoutMs)
+QString GitClient::run(const QStringList &args, const QString &cwd, QString *errorOut, int timeoutMs)
 {
     QProcess p;
     p.setProgram(m_settings->gitProgram());
@@ -44,7 +44,7 @@ QString GitClient::run(const QStringList &args, QString *errorOut, int timeoutMs
     fullArgs << args;
     p.setArguments(fullArgs);
 
-    p.setWorkingDirectory(m_settings->sourcePath);
+    p.setWorkingDirectory(cwd.isEmpty() ? m_settings->sourcePath : cwd);
     p.start();
 
     if (!p.waitForStarted(timeoutMs)) {
@@ -67,31 +67,31 @@ QString GitClient::run(const QStringList &args, QString *errorOut, int timeoutMs
     return QString::fromUtf8(p.readAllStandardOutput());
 }
 
-QString GitClient::currentBranch()
+QString GitClient::currentBranch(const QString &cwd)
 {
-    return run({QStringLiteral("branch"), QStringLiteral("--show-current")}).trimmed();
+    return run({QStringLiteral("branch"), QStringLiteral("--show-current")}, cwd).trimmed();
 }
 
-bool GitClient::isDirty()
+bool GitClient::isDirty(const QString &cwd)
 {
     QString err;
-    const QString out = run({QStringLiteral("status"), QStringLiteral("--porcelain")}, &err);
+    const QString out = run({QStringLiteral("status"), QStringLiteral("--porcelain")}, cwd, &err);
     if (!err.isEmpty())
         return true; // 状态检查失败时按"脏"处理，避免误放行更新
     return !out.isEmpty();
 }
 
-QList<GitBranch> GitClient::branches()
+QList<GitBranch> GitClient::branches(const QString &cwd)
 {
     QList<GitBranch> result;
-    const QString current = currentBranch();
+    const QString current = currentBranch(cwd);
 
     // 本地与远程分支（refs/heads / refs/remotes）
     {
         QString err;
         const QString out = run(
             {QStringLiteral("for-each-ref"), QStringLiteral("--format=%(refname:short)"), QStringLiteral("refs/heads")},
-            &err);
+            cwd, &err);
         if (err.isEmpty()) {
             const QStringList names = out.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
             for (const QString &n : names) {
@@ -107,7 +107,7 @@ QList<GitBranch> GitClient::branches()
         const QString out = run({QStringLiteral("for-each-ref"),
                                  QStringLiteral("--format=%(refname:short)"),
                                  QStringLiteral("refs/remotes")},
-                                &err);
+                                cwd, &err);
         if (err.isEmpty()) {
             const QStringList names = out.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
             for (const QString &n : names) {
@@ -121,12 +121,12 @@ QList<GitBranch> GitClient::branches()
     return result;
 }
 
-QList<GitCommit> GitClient::commits(int limit, int offset)
+QList<GitCommit> GitClient::commits(int limit, int offset, const QString &cwd)
 {
-    return commits(QString(), limit, offset);
+    return commits(QString(), limit, offset, cwd);
 }
 
-QList<GitCommit> GitClient::commits(const QString &rev, int limit, int offset)
+QList<GitCommit> GitClient::commits(const QString &rev, int limit, int offset, const QString &cwd)
 {
     QString err;
     QStringList args = {QStringLiteral("log"),
@@ -135,13 +135,13 @@ QList<GitCommit> GitClient::commits(const QString &rev, int limit, int offset)
     if (!rev.isEmpty())
         args << rev;
     args << QStringLiteral("--skip=") + QString::number(offset) << QStringLiteral("-n") << QString::number(limit);
-    const QString out = run(args, &err);
+    const QString out = run(args, cwd, &err);
     if (!err.isEmpty())
         return {};
     return parseLog(out);
 }
 
-QList<GitCommit> GitClient::searchCommits(const QString &keyword, int limit)
+QList<GitCommit> GitClient::searchCommits(const QString &keyword, int limit, const QString &cwd)
 {
     QString err;
     QStringList args = {QStringLiteral("log"),
@@ -156,20 +156,20 @@ QList<GitCommit> GitClient::searchCommits(const QString &keyword, int limit)
              << QString::number(limit);
     }
 
-    const QString out = run(args, &err);
+    const QString out = run(args, cwd, &err);
     if (!err.isEmpty())
         return {};
     return parseLog(out);
 }
 
-bool GitClient::aheadBehind(int *ahead, int *behind)
+bool GitClient::aheadBehind(int *ahead, int *behind, const QString &cwd)
 {
     QString err;
     const QString out = run({QStringLiteral("rev-list"),
                              QStringLiteral("--left-right"),
                              QStringLiteral("--count"),
                              QStringLiteral("HEAD...@{upstream}")},
-                            &err);
+                            cwd, &err);
     if (!err.isEmpty())
         return false; // 无上游分支 / 仓库无效
     const QStringList parts = out.trimmed().split(QRegularExpression(QStringLiteral("[\\s]+")), Qt::SkipEmptyParts);
@@ -187,10 +187,10 @@ bool GitClient::aheadBehind(int *ahead, int *behind)
     return true;
 }
 
-bool GitClient::fetch(QString *errorOut)
+bool GitClient::fetch(QString *errorOut, const QString &cwd)
 {
     QString err;
-    run({QStringLiteral("fetch"), QStringLiteral("--all"), QStringLiteral("--prune")}, &err, 120000);
+    run({QStringLiteral("fetch"), QStringLiteral("--all"), QStringLiteral("--prune")}, cwd, &err, 120000);
     if (!err.isEmpty()) {
         if (errorOut)
             *errorOut = err;
@@ -199,7 +199,7 @@ bool GitClient::fetch(QString *errorOut)
     return true;
 }
 
-bool GitClient::checkoutBranch(const QString &name, QString *errorOut)
+bool GitClient::checkoutBranch(const QString &name, QString *errorOut, const QString &cwd)
 {
     QString target = name;
     const QString originPrefix = QStringLiteral("origin/");
@@ -207,7 +207,7 @@ bool GitClient::checkoutBranch(const QString &name, QString *errorOut)
         target = target.mid(originPrefix.length());
 
     QString err;
-    run({QStringLiteral("checkout"), target}, &err);
+    run({QStringLiteral("checkout"), target}, cwd, &err);
     if (!err.isEmpty()) {
         if (errorOut)
             *errorOut = err;
@@ -216,7 +216,7 @@ bool GitClient::checkoutBranch(const QString &name, QString *errorOut)
     return true;
 }
 
-bool GitClient::checkoutCommit(const QString &hash, QString *errorOut)
+bool GitClient::checkoutCommit(const QString &hash, QString *errorOut, const QString &cwd)
 {
     // 基于该提交创建自动命名的新本地分支并检出（避免 detached HEAD，
     // 使切换后的版本可继续更新/开发）。同名分支已存在时直接检出该分支。
@@ -224,12 +224,12 @@ bool GitClient::checkoutCommit(const QString &hash, QString *errorOut)
         QStringLiteral("dsh/%1-%2").arg(QDate::currentDate().toString(QStringLiteral("yyyyMMdd")), hash.left(7));
 
     QString err;
-    run({QStringLiteral("checkout"), branchName}, &err);
+    run({QStringLiteral("checkout"), branchName}, cwd, &err);
     if (err.isEmpty())
         return true; // 同名分支已存在，直接检出
 
     err.clear();
-    run({QStringLiteral("checkout"), QStringLiteral("-b"), branchName, hash}, &err);
+    run({QStringLiteral("checkout"), QStringLiteral("-b"), branchName, hash}, cwd, &err);
     if (!err.isEmpty()) {
         if (errorOut)
             *errorOut = err;
