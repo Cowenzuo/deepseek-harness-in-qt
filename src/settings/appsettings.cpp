@@ -1,0 +1,60 @@
+﻿#include "appsettings.h"
+
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+
+namespace {
+const char *kSourcePath = "sourcePath";
+const char *kWebPort = "webPort";
+const char *kNodePath = "nodePath";
+const char *kPnpmPath = "pnpmPath";
+const char *kGitPath = "gitPath";
+const char *kRepoUrl = "repoUrl";
+} // namespace
+
+QString AppSettings::configFilePath()
+{
+    // 固定放在可执行目录下的 config/config.json（绿色软件，跟随 exe）
+    const QString dir = QCoreApplication::applicationDirPath() + QStringLiteral("/config");
+    return QDir(dir).filePath(QStringLiteral("config.json"));
+}
+
+bool AppSettings::load()
+{
+    QFile f(configFilePath());
+    if (!f.open(QIODevice::ReadOnly))
+        return false; // 无配置，保持默认值
+
+    const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+    sourcePath = o.value(QLatin1String(kSourcePath)).toString(sourcePath);
+    webPort = o.value(QLatin1String(kWebPort)).toInt(webPort);
+    nodePath = o.value(QLatin1String(kNodePath)).toString(nodePath);
+    pnpmPath = o.value(QLatin1String(kPnpmPath)).toString(pnpmPath);
+    gitPath = o.value(QLatin1String(kGitPath)).toString(gitPath);
+    repoUrl = o.value(QLatin1String(kRepoUrl)).toString(repoUrl);
+    return true;
+}
+
+bool AppSettings::save() const
+{
+    QJsonObject o;
+    o.insert(QLatin1String(kSourcePath), sourcePath);
+    o.insert(QLatin1String(kWebPort), webPort);
+    o.insert(QLatin1String(kNodePath), nodePath);
+    o.insert(QLatin1String(kPnpmPath), pnpmPath);
+    o.insert(QLatin1String(kGitPath), gitPath);
+    o.insert(QLatin1String(kRepoUrl), repoUrl);
+
+    const QString path = configFilePath();
+    QDir().mkpath(QFileInfo(path).absolutePath());
+
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    f.write(QJsonDocument(o).toJson(QJsonDocument::Indented));
+    return true;
+}

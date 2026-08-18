@@ -1,0 +1,46 @@
+# dshinqt 代码风格
+# 4 空格缩进；函数/类/结构体大括号换行；enum/namespace 与控制语句大括号贴行；指针/引用靠右。
+BasedOnStyle: Mozilla
+Language: Cpp
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4
+TabWidth: 4
+UseTab: Never
+
+ColumnLimit: 120
+
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+
+AlwaysBreakAfterDefinitionReturnType: None
+BreakAfterReturnType: None
+BinPackParameters: true
+
+IndentCaseLabels: false
+AllowShortCaseLabelsOnASingleLine: true
+
+Cpp11BracedListStyle: true
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: true
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterExternBlock: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
