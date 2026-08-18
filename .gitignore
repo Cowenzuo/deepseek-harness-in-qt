@@ -1,4 +1,4 @@
-# 构建产物
+﻿# 构建产物
 build/
 install/
 cmake-build-*/
@@ -30,3 +30,6 @@ config/
 .vscode/
 .idea/
 *.user
+
+# 本地备忘（不提交）
+/拓扑备忘.md
