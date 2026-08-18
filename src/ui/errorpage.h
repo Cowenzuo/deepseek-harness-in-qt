@@ -13,8 +13,8 @@ class ErrorPage : public QWidget
 public:
     explicit ErrorPage(QWidget *parent = nullptr);
 
-    void setMessage(const QString &msg); // 错误详情
-    void setBuildVisible(bool visible);  // 是否显示「一键构建」按钮
+    void setMessage(const QString &msg);
+    void setBuildVisible(bool visible);
 
 signals:
     void retryRequested();

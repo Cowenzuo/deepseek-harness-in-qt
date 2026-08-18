@@ -33,7 +33,7 @@ public:
 
     void start();         // 强制启动（异步清理端口残留，再分离启动并监督）
     void attach();        // 服务已在运行：直接进入 Running
-    void stop();          // 停止常驻服务
+    void stop();          // 异步杀端口进程树后置 Idle
     void restart();       // 异步杀旧启新
     void ensureRunning(); // 异步探测端口：匹配则 attach，不一致则杀旧启新，不在则启动
     bool isRunning() const;

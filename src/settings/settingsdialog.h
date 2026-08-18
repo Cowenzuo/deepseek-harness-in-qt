@@ -20,7 +20,6 @@ struct RepoSnapshot
 
 class AppSettings;
 class DshProcessManager;
-class GitClient;
 class UpdateManager;
 class QLabel;
 class QLineEdit;
@@ -53,9 +52,9 @@ private slots:
     void onBranchCommitsReady();     // 分支提交加载完成
     void onCommitActivated(int row); // 双击提交列表行 → 切换到此提交
     void onNavChanged(int row);      // 左侧导航切换页面
-    void onStartService();           // 服务页：启动
-    void onStopService();            // 服务页：停止
-    void onRestartService();         // 服务页：重启
+    void onStartService();
+    void onStopService();
+    void onRestartService();
 
 private:
     QWidget *buildGeneralTab();

@@ -10,7 +10,6 @@
 #include <QPalette>
 #include <QPushButton>
 #include <QStyle>
-#include <QTimer>
 #include <QVBoxLayout>
 
 #include "process/environmentchecker.h"
@@ -38,7 +37,6 @@ SetupPage::SetupPage(AppSettings *settings, EnvironmentChecker *env, QWidget *pa
     subtitle->setObjectName(QStringLiteral("subtitle"));
     subtitle->setAlignment(Qt::AlignCenter);
 
-    // 表单卡片
     auto *card = new QFrame(this);
     card->setObjectName(QStringLiteral("card"));
     card->setMaximumWidth(880);
@@ -47,7 +45,6 @@ SetupPage::SetupPage(AppSettings *settings, EnvironmentChecker *env, QWidget *pa
     cardLayout->setContentsMargins(32, 28, 32, 28);
     cardLayout->setSpacing(22);
 
-    // 四个字段的控件
     m_sourceEdit = new QLineEdit(this);
     m_sourceEdit->setPlaceholderText(QStringLiteral("选择含 pnpm-workspace.yaml 的目录"));
     m_nodeEdit = new QLineEdit(this);
@@ -94,7 +91,7 @@ SetupPage::SetupPage(AppSettings *settings, EnvironmentChecker *env, QWidget *pa
     connect(browsePnpm, &QPushButton::clicked, this, &SetupPage::browsePnpm);
     connect(browseGit, &QPushButton::clicked, this, &SetupPage::browseGit);
 
-    // 汇总提示 + 完成按钮
+    // 汇总提示 + 校验按钮
     m_summaryLabel = new QLabel(this);
     m_summaryLabel->setAlignment(Qt::AlignCenter);
     m_summaryLabel->setTextFormat(Qt::RichText);
@@ -138,7 +135,6 @@ SetupPage::SetupPage(AppSettings *settings, EnvironmentChecker *env, QWidget *pa
     root->addLayout(buttonRow);
     root->addStretch(1);
 
-    // 异步逐项校验的实时反馈
     connect(m_env, &EnvironmentChecker::checkStarted, this, [this](int, const QString &name) { setChecking(name); });
     connect(m_env, &EnvironmentChecker::itemChecked, this, [this](int, const EnvItem &item) {
         updateField(item.name, item.passed, item.detail);
@@ -209,7 +205,7 @@ void SetupPage::prefill()
     m_nodeStatus->setText(idle);
     m_pnpmStatus->setText(idle);
     m_gitStatus->setText(idle);
-    m_summaryLabel->setText(QStringLiteral("<span style='color:#9a9a9a;'>填写路径后点击「完成」开始校验</span>"));
+    m_summaryLabel->setText(QStringLiteral("<span style='color:#9a9a9a;'>填写路径后点击「校验」开始校验</span>"));
 
     markInvalid(m_sourceEdit, false);
     markInvalid(m_nodeEdit, false);
@@ -258,7 +254,6 @@ void SetupPage::onApply()
 
     m_pendingSettings = *m_settings;
 
-    // 重置所有字段为「等待校验」
     const QString waiting = QStringLiteral("<span style='color:#7a7a7a;'>等待校验</span>");
     m_sourceStatus->setText(waiting);
     m_depsStatus->setText(waiting);
@@ -339,7 +334,6 @@ void SetupPage::finishCheck(bool allOk)
         m_applyBtn->setEnabled(true);
         m_buildBtn->setVisible(m_sourceValid);
 
-        // 克隆按钮仅在「目录可克隆 且 仓库地址有效」时显示
         const bool repoOk = isValidRepoUrl(m_settings->repoUrl);
         m_cloneBtn->setVisible(m_sourceCloneable && repoOk);
 
@@ -389,7 +383,6 @@ void SetupPage::recheck()
 void SetupPage::applyStyleSheet()
 {
     setStyleSheet(QStringLiteral(R"(
-SetupPage { background: #121212; }
 #title { color: #f5f5f5; font-size: 26px; font-weight: 700; }
 #subtitle { color: #9a9a9a; font-size: 13px; }
 #card { background: #1d1d1f; border: 1px solid #2b2b2e; border-radius: 16px; }

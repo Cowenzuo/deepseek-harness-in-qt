@@ -13,7 +13,6 @@ QList<CheckItem> PreflightChecker::check(const AppSettings &settings)
 {
     QList<CheckItem> items;
 
-    // 1. 依赖
     {
         CheckItem it;
         it.name = QStringLiteral("依赖已安装");
@@ -23,7 +22,6 @@ QList<CheckItem> PreflightChecker::check(const AppSettings &settings)
         items.append(it);
     }
 
-    // 2. Web 前端产物
     {
         CheckItem it;
         it.name = QStringLiteral("Web 前端产物");
@@ -33,7 +31,7 @@ QList<CheckItem> PreflightChecker::check(const AppSettings &settings)
         items.append(it);
     }
 
-    // 3. 库构建产物（packages 下任一非空 lib）
+    // 库构建产物（packages 下任一非空 lib）
     {
         CheckItem it;
         it.name = QStringLiteral("库构建产物");

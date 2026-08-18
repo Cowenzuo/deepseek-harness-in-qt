@@ -16,7 +16,6 @@ StartupPage::StartupPage(QWidget *parent)
         pal.setColor(QPalette::Window, QColor(18, 18, 18));
         setPalette(pal);
     }
-    setStyleSheet(QStringLiteral("StartupPage { background: #121212; }"));
 
     auto *layout = new QVBoxLayout(this);
     layout->setAlignment(Qt::AlignCenter);

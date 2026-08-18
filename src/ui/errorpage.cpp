@@ -17,8 +17,7 @@ ErrorPage::ErrorPage(QWidget *parent)
         pal.setColor(QPalette::Window, QColor(18, 18, 18));
         setPalette(pal);
     }
-    setStyleSheet(QStringLiteral("ErrorPage { background: #121212; }"
-                                 "QLabel { color: #e0e0e0; }"));
+    setStyleSheet(QStringLiteral("QLabel { color: #e0e0e0; }"));
 
     auto *title = new QLabel(QStringLiteral("dsh 未能启动"), this);
     QFont f = title->font();

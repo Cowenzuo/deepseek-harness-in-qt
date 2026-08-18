@@ -21,9 +21,8 @@ LogView::LogView(QWidget *parent)
 
     m_text = new QTextEdit(this);
     m_text->setReadOnly(true);
-    m_text->setLineWrapMode(QTextEdit::WidgetWidth); // 自动换行
+    m_text->setLineWrapMode(QTextEdit::WidgetWidth);
 
-    // 等宽字体
     QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     f.setPointSize(9);
     m_text->setFont(f);
@@ -57,7 +56,6 @@ void LogView::appendLog(const QString &line, bool isError)
     cursor.movePosition(QTextCursor::End);
     cursor.insertText(text, fmt);
 
-    // 滚动到底
     m_text->setTextCursor(cursor);
     m_text->ensureCursorVisible();
 }

@@ -12,7 +12,7 @@ class StartupPage : public QWidget
 public:
     explicit StartupPage(QWidget *parent = nullptr);
 
-    void setStatus(const QString &text); // 更新状态文字
+    void setStatus(const QString &text);
 
 private:
     QLabel *m_statusLabel = nullptr;
