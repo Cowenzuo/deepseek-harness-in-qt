@@ -8,6 +8,7 @@
 #include <QtConcurrent>
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QFileInfo>
 #include <QFont>
 #include <QFrame>
@@ -539,7 +540,11 @@ void SettingsDialog::saveSettings()
     m_commitWatcher->waitForFinished();
     m_fetchWatcher->waitForFinished();
 
-    m_settings->sourcePath = path;
+    const bool svcRunning = m_proc->isRunning();
+    const bool svcChanged = (path != m_settings->sourcePath) || (m_portSpin->value() != m_settings->webPort);
+
+    // 源码路径统一转绝对路径（GUI 应用 cwd 不稳定，避免相对路径解析漂移）
+    m_settings->sourcePath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
     m_settings->webPort = m_portSpin->value();
     m_settings->nodePath = m_nodePathEdit->text().trimmed();
     m_settings->pnpmPath = m_pnpmPathEdit->text().trimmed();
@@ -550,7 +555,16 @@ void SettingsDialog::saveSettings()
         return;
     }
     refreshRepo();
-    QMessageBox::information(this, QStringLiteral("设置"), QStringLiteral("配置已保存。"));
+    if (svcRunning && svcChanged) {
+        if (QMessageBox::question(this, QStringLiteral("重启服务"),
+                                  QStringLiteral("端口/源码路径已变更，需重启 dsh 服务才能生效。是否立即重启？"),
+                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes)
+            == QMessageBox::Yes) {
+            m_proc->restart();
+        }
+    } else {
+        QMessageBox::information(this, QStringLiteral("设置"), QStringLiteral("配置已保存。"));
+    }
 }
 
 void SettingsDialog::refreshRepo()

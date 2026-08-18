@@ -10,6 +10,7 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
+#include <QShortcut>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QTimer>
@@ -131,6 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_errorPage, &ErrorPage::retryRequested, this, &MainWindow::onErrorRetry);
     connect(m_errorPage, &ErrorPage::buildRequested, this, &MainWindow::onErrorBuild);
     connect(m_errorPage, &ErrorPage::openLogRequested, this, &MainWindow::showLogPage);
+    connect(m_logView, &LogView::backRequested, this, &MainWindow::showHomePage);
     connect(m_update, &UpdateManager::logOutput, this, &MainWindow::onDshLog);
     connect(m_update, &UpdateManager::stageChanged, this, &MainWindow::onUpdateStageChanged);
     connect(m_update, &UpdateManager::finished, this, &MainWindow::onUpdateFinished);
@@ -153,6 +155,26 @@ QPushButton:pressed { background: #2f3550; }
 )"));
     connect(settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettings);
     statusBar()->addWidget(settingsBtn); // 左侧
+
+    // 状态栏工具按钮：日志 / 刷新
+    auto *logBtn = new QPushButton(QStringLiteral("日志"), this);
+    logBtn->setCursor(Qt::PointingHandCursor);
+    logBtn->setFocusPolicy(Qt::NoFocus);
+    connect(logBtn, &QPushButton::clicked, this, &MainWindow::showLogPage);
+    statusBar()->addWidget(logBtn);
+
+    auto *reloadBtn = new QPushButton(QStringLiteral("刷新"), this);
+    reloadBtn->setCursor(Qt::PointingHandCursor);
+    reloadBtn->setFocusPolicy(Qt::NoFocus);
+    reloadBtn->setToolTip(QStringLiteral("重新加载 dsh Web UI（F5）"));
+    connect(reloadBtn, &QPushButton::clicked, this, [this] {
+        m_homePage->load(QUrl(QStringLiteral("http://127.0.0.1:%1").arg(m_settings.webPort)));
+        showHomePage();
+    });
+    statusBar()->addWidget(reloadBtn);
+
+    auto *reloadShortcut = new QShortcut(QKeySequence::Refresh, this); // F5
+    connect(reloadShortcut, &QShortcut::activated, reloadBtn, &QPushButton::click);
 
     m_statusLabel = new QLabel(QStringLiteral("dsh: 未启动"), this);
     m_statusLabel->setStyleSheet(QStringLiteral("color:#9a9a9a; font-size:12px;"));

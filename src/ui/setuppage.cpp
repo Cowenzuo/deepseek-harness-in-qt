@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -249,7 +250,7 @@ void SetupPage::browseGit()
 void SetupPage::onApply()
 {
     // 先把输入框值写回 m_settings，克隆/构建流程（startClone/runBuildStep）读取的就是最新路径
-    m_settings->sourcePath = m_sourceEdit->text().trimmed();
+    m_settings->sourcePath = QDir::cleanPath(QFileInfo(m_sourceEdit->text().trimmed()).absoluteFilePath());
     m_settings->nodePath = m_nodeEdit->text().trimmed();
     m_settings->pnpmPath = m_pnpmEdit->text().trimmed();
     m_settings->gitPath = m_gitEdit->text().trimmed();

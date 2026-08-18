@@ -2,7 +2,9 @@
 
 #include <QColor>
 #include <QFontDatabase>
+#include <QHBoxLayout>
 #include <QPalette>
+#include <QPushButton>
 #include <QTextCharFormat>
 #include <QTextCursor>
 #include <QTextEdit>
@@ -21,6 +23,24 @@ LogView::LogView(QWidget *parent)
         setPalette(pal);
     }
 
+    // 顶部工具行：返回主页 + 清空
+    auto *backBtn = new QPushButton(QStringLiteral("← 返回主页"), this);
+    backBtn->setCursor(Qt::PointingHandCursor);
+    backBtn->setFocusPolicy(Qt::NoFocus);
+    backBtn->setObjectName(QStringLiteral("logTool"));
+    auto *clearBtn = new QPushButton(QStringLiteral("清空"), this);
+    clearBtn->setCursor(Qt::PointingHandCursor);
+    clearBtn->setFocusPolicy(Qt::NoFocus);
+    clearBtn->setObjectName(QStringLiteral("logTool"));
+    connect(backBtn, &QPushButton::clicked, this, &LogView::backRequested);
+    connect(clearBtn, &QPushButton::clicked, this, &LogView::clearLog);
+
+    auto *toolRow = new QHBoxLayout;
+    toolRow->setContentsMargins(8, 6, 8, 6);
+    toolRow->addWidget(backBtn);
+    toolRow->addStretch(1);
+    toolRow->addWidget(clearBtn);
+
     m_text = new QTextEdit(this);
     m_text->setReadOnly(true);
     m_text->setLineWrapMode(QTextEdit::WidgetWidth);
@@ -37,6 +57,8 @@ LogView::LogView(QWidget *parent)
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addLayout(toolRow);
     layout->addWidget(m_text);
 }
 
