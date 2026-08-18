@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+﻿cmake_minimum_required(VERSION 3.21)
 
 project(deepseek-harness-in-qt VERSION 0.1.0 LANGUAGES CXX)
 
@@ -41,6 +41,8 @@ target_include_directories(deepseek-harness-in-qt PRIVATE ${CMAKE_CURRENT_SOURCE
 
 # VS 调试运行时把 Qt bin 加入 PATH（含 QtWebEngineProcess.exe）
 if(MSVC)
+    # 源文件为 UTF-8（无 BOM）：显式指定 /utf-8，避免中文按系统代码页解析出错
+    add_compile_options("/utf-8")
     set_target_properties(deepseek-harness-in-qt PROPERTIES
         VS_DEBUGGER_ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$(PATH)"
     )
