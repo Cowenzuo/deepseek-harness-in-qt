@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 
 #include <QCloseEvent>
 #include <QColor>
@@ -27,6 +27,8 @@
 #include "ui/setuppage.h"
 #include "ui/startuppage.h"
 #include "update/updatemanager.h"
+
+namespace dshinqt {
 
 namespace {
 const char *stateName(DshProcessManager::State s)
@@ -414,3 +416,5 @@ void MainWindow::onDshLog(const QString &line, bool isError)
 {
     m_logView->appendLog(line, isError);
 }
+
+} // namespace dshinqt

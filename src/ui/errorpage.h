@@ -1,9 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include <QWidget>
 
 class QLabel;
 class QPushButton;
+
+namespace dshinqt {
 
 // 错误页：环境/依赖/服务启动受阻时展示原因与操作入口。
 class ErrorPage : public QWidget
@@ -27,3 +29,5 @@ private:
     QPushButton *m_buildBtn = nullptr;
     QPushButton *m_logBtn = nullptr;
 };
+
+} // namespace dshinqt

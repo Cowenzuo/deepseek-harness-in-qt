@@ -1,4 +1,4 @@
-﻿#include <QApplication>
+#include <QApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -11,6 +11,8 @@
 #include <QTextStream>
 
 #include "mainwindow.h"
+
+using dshinqt::MainWindow;
 
 // qDebug 落到 config/debug.log（WIN32 GUI 应用无控制台，需写文件才能观察时序）
 static void debugMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)

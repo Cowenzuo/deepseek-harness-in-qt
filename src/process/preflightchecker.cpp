@@ -1,9 +1,11 @@
-﻿#include "preflightchecker.h"
+#include "preflightchecker.h"
 
 #include <QDir>
 #include <QDirIterator>
 
 #include "settings/appsettings.h"
+
+namespace dshinqt {
 
 PreflightChecker::PreflightChecker(QObject *parent)
     : QObject(parent)
@@ -55,3 +57,5 @@ QList<CheckItem> PreflightChecker::check(const AppSettings &settings)
 
     return items;
 }
+
+} // namespace dshinqt

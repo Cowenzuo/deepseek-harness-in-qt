@@ -1,13 +1,16 @@
-﻿#pragma once
+#pragma once
 
 #include <QWidget>
 
 #include "settings/appsettings.h"
 
-class EnvironmentChecker;
 class QLabel;
 class QLineEdit;
 class QPushButton;
+
+namespace dshinqt {
+
+class EnvironmentChecker;
 
 // 引导页：环境检测失败时让用户补全缺失路径（深色卡片式单页表单）。
 class SetupPage : public QWidget
@@ -67,3 +70,5 @@ private:
     bool m_sourceValid = false;
     bool m_sourceCloneable = false;
 };
+
+} // namespace dshinqt

@@ -1,7 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <QString>
 #include <QStringList>
+
+namespace dshinqt {
 
 // 检测系统代理并转成 git 命令行参数。
 // git 不读 Windows 系统代理，需显式注入 http.proxy / https.proxy。
@@ -17,3 +19,5 @@ public:
     // 把 host:port 补全成带协议的代理 URL
     static QString toProxyUrl(const QString &hostPort);
 };
+
+} // namespace dshinqt

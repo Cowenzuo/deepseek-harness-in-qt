@@ -1,4 +1,4 @@
-﻿#include "logview.h"
+#include "logview.h"
 
 #include <QColor>
 #include <QFontDatabase>
@@ -7,6 +7,8 @@
 #include <QTextCursor>
 #include <QTextEdit>
 #include <QVBoxLayout>
+
+namespace dshinqt {
 
 LogView::LogView(QWidget *parent)
     : QWidget(parent)
@@ -64,3 +66,5 @@ void LogView::clearLog()
 {
     m_text->clear();
 }
+
+} // namespace dshinqt

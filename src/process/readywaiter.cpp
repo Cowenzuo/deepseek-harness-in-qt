@@ -1,8 +1,10 @@
-﻿#include "readywaiter.h"
+#include "readywaiter.h"
 
 #include <QDebug>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+
+namespace dshinqt {
 
 ReadyWaiter::ReadyWaiter(QObject *parent)
     : QObject(parent)
@@ -90,3 +92,5 @@ bool ReadyWaiter::isDshReady(const QByteArray &body) const
     // 不枚举/黑名单任何 warning——界面真正可用由 HomePage 的正面锚点（输入区/会话区）判定。
     return body.contains("__DSH_BOOT__");
 }
+
+} // namespace dshinqt

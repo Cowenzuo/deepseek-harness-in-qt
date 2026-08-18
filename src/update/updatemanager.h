@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <QObject>
 
 #include "process/dshprocessmanager.h"
+
+namespace dshinqt {
 
 class AppSettings;
 class GitClient;
@@ -51,3 +53,5 @@ private:
     Target m_target;
     Stage m_stage = Stage::Idle;
 };
+
+} // namespace dshinqt

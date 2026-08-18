@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <QDir>
 #include <QFileInfo>
@@ -6,6 +6,8 @@
 #include <QString>
 #include <QStringList>
 #include <QtGlobal>
+
+namespace dshinqt {
 
 // Windows 下 pnpm/npm 等以 .cmd/.bat/.ps1 shim 形式存在，QProcess 无法直接执行，
 // 统一通过 cmd.exe /c 包装执行；有明确扩展名的可执行文件（node.exe、git.exe）直接启动。
@@ -37,3 +39,5 @@ inline void startWrapped(QProcess *proc, const QString &program, const QStringLi
 // Windows 实现见 startdetached.cpp：可执行文件（.exe）直接启动，shim 用 cmd.exe 包装。
 bool startDetachedWrapped(const QString &program, const QStringList &args, const QString &workingDirectory,
                           const QString &logFile);
+
+} // namespace dshinqt

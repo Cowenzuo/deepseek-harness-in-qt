@@ -1,10 +1,12 @@
-﻿#include "startuppage.h"
+#include "startuppage.h"
 
 #include <QColor>
 #include <QLabel>
 #include <QPalette>
 #include <QProgressBar>
 #include <QVBoxLayout>
+
+namespace dshinqt {
 
 StartupPage::StartupPage(QWidget *parent)
     : QWidget(parent)
@@ -45,3 +47,5 @@ void StartupPage::setStatus(const QString &text)
 {
     m_statusLabel->setText(text);
 }
+
+} // namespace dshinqt

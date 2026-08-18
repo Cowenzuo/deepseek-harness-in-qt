@@ -1,4 +1,4 @@
-﻿#include "errorpage.h"
+#include "errorpage.h"
 
 #include <QColor>
 #include <QHBoxLayout>
@@ -6,6 +6,8 @@
 #include <QPalette>
 #include <QPushButton>
 #include <QVBoxLayout>
+
+namespace dshinqt {
 
 ErrorPage::ErrorPage(QWidget *parent)
     : QWidget(parent)
@@ -61,3 +63,5 @@ void ErrorPage::setBuildVisible(bool visible)
 {
     m_buildBtn->setVisible(visible);
 }
+
+} // namespace dshinqt

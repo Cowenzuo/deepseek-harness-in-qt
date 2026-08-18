@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <QElapsedTimer>
 #include <QUrl>
@@ -6,6 +6,8 @@
 
 class QTimer;
 class QWebEngineView;
+
+namespace dshinqt {
 
 // 主页：只承载 Web UI 的 webview（深色背景）。
 // 在窗口 show 前同步创建 webview（顶层窗口第一帧即 RHI 形态，避免光栅→RHI 切换白闪），
@@ -37,3 +39,5 @@ private:
     qint64 m_cycleStartMs = 0; // 当前周期（loadFinished/reload）起点
     bool m_reloaded = false;   // 本次加载是否已自愈 reload
 };
+
+} // namespace dshinqt

@@ -1,4 +1,4 @@
-﻿#include "appsettings.h"
+#include "appsettings.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+
+namespace dshinqt {
 
 namespace {
 const char *kSourcePath = "sourcePath";
@@ -61,3 +63,5 @@ bool AppSettings::save() const
     const QByteArray data = QJsonDocument(o).toJson(QJsonDocument::Indented);
     return f.write(data) == data.size();
 }
+
+} // namespace dshinqt

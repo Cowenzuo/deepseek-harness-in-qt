@@ -1,4 +1,4 @@
-﻿#include "dshprocessmanager.h"
+#include "dshprocessmanager.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -11,6 +11,8 @@
 #include "readywaiter.h"
 #include "settings/appsettings.h"
 #include "startwrapped.h"
+
+namespace dshinqt {
 
 namespace {
 const char *stateName(DshProcessManager::State s)
@@ -394,3 +396,5 @@ void DshProcessManager::readLogTail()
         emit logOutput(line, false);
     }
 }
+
+} // namespace dshinqt

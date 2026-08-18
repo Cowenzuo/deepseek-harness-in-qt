@@ -1,4 +1,4 @@
-﻿#include "environmentchecker.h"
+#include "environmentchecker.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -10,6 +10,8 @@
 
 #include "process/startwrapped.h"
 #include "settings/appsettings.h"
+
+namespace dshinqt {
 
 EnvironmentChecker::EnvironmentChecker(QObject *parent)
     : QObject(parent)
@@ -172,3 +174,5 @@ void EnvironmentChecker::runNext()
     m_asyncIndex++;
     QTimer::singleShot(0, this, &EnvironmentChecker::runNext);
 }
+
+} // namespace dshinqt

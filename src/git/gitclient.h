@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <QList>
 #include <QObject>
 #include <QString>
+
+namespace dshinqt {
 
 class AppSettings;
 
@@ -46,3 +48,5 @@ private:
 
     const AppSettings *m_settings = nullptr;
 };
+
+} // namespace dshinqt

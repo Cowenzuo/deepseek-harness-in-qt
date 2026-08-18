@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <QNetworkAccessManager>
 #include <QObject>
@@ -8,6 +8,8 @@
 #include <functional>
 
 class QNetworkReply;
+
+namespace dshinqt {
 
 class ReadyWaiter : public QObject
 {
@@ -41,3 +43,5 @@ private:
     QUrl m_url;
     bool m_waitActive = false; // 区分 wait() 轮询与 probeOnce 单次探测
 };
+
+} // namespace dshinqt

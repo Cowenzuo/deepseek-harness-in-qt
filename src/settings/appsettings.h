@@ -1,6 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include <QString>
+
+namespace dshinqt {
 
 class AppSettings
 {
@@ -17,3 +19,5 @@ public:
 
     static QString configFilePath();
 };
+
+} // namespace dshinqt

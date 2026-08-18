@@ -1,4 +1,4 @@
-﻿#include "homepage.h"
+#include "homepage.h"
 
 #include <QBoxLayout>
 #include <QColor>
@@ -11,6 +11,8 @@
 #include <QVariant>
 #include <QWebEnginePage>
 #include <QWebEngineView>
+
+namespace dshinqt {
 
 namespace {
 const QColor kBg(18, 18, 18);
@@ -149,3 +151,5 @@ void HomePage::shutdown()
     m_webView->deleteLater(); // 事件循环中安全删除
     m_webView = nullptr;
 }
+
+} // namespace dshinqt

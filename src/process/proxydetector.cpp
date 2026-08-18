@@ -1,6 +1,8 @@
-﻿#include "proxydetector.h"
+#include "proxydetector.h"
 
 #include <QSettings>
+
+namespace dshinqt {
 
 QString ProxyDetector::toProxyUrl(const QString &hostPort)
 {
@@ -61,3 +63,5 @@ QStringList ProxyDetector::gitProxyArgs()
             QStringLiteral("-c"),
             QStringLiteral("https.proxy=") + proxy};
 }
+
+} // namespace dshinqt

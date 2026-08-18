@@ -1,4 +1,4 @@
-﻿#include "gitclient.h"
+#include "gitclient.h"
 
 #include <QDate>
 #include <QProcess>
@@ -6,6 +6,8 @@
 
 #include "process/proxydetector.h"
 #include "settings/appsettings.h"
+
+namespace dshinqt {
 
 namespace {
 QList<GitCommit> parseLog(const QString &out)
@@ -235,3 +237,5 @@ bool GitClient::checkoutCommit(const QString &hash, QString *errorOut)
     }
     return true;
 }
+
+} // namespace dshinqt

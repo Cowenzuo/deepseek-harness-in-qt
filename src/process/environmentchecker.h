@@ -1,10 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include <QList>
 #include <QObject>
 #include <QString>
 
 #include "settings/appsettings.h"
+
+namespace dshinqt {
 
 struct EnvItem
 {
@@ -49,3 +51,5 @@ private:
     QStringList m_asyncNames;
     int m_asyncIndex = 0;
 };
+
+} // namespace dshinqt

@@ -1,10 +1,24 @@
-﻿#pragma once
+#pragma once
 
 #include <QDialog>
 #include <QFutureWatcher>
 #include <QList>
 
 #include "git/gitclient.h"
+
+class QLabel;
+class QLineEdit;
+class QListWidget;
+class QPushButton;
+class QSpinBox;
+class QStackedWidget;
+class QTreeWidget;
+
+namespace dshinqt {
+
+class AppSettings;
+class DshProcessManager;
+class UpdateManager;
 
 // 后台线程一次性采集的仓库快照，避免同步 git 命令阻塞 UI
 struct RepoSnapshot
@@ -17,17 +31,6 @@ struct RepoSnapshot
     QList<GitBranch> branches;
     QList<GitCommit> commits;
 };
-
-class AppSettings;
-class DshProcessManager;
-class UpdateManager;
-class QLabel;
-class QLineEdit;
-class QListWidget;
-class QPushButton;
-class QSpinBox;
-class QStackedWidget;
-class QTreeWidget;
 
 // 统一设置弹窗：左侧竖向导航（常规 / 服务 / 更新 / 关于）+ 右侧页面。
 // 更新页 = 实用的 git 页面：分支树 + 提交列表，快速查看、
@@ -102,3 +105,5 @@ private:
     QPushButton *m_svcStopBtn = nullptr;
     QPushButton *m_svcRestartBtn = nullptr;
 };
+
+} // namespace dshinqt

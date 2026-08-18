@@ -1,9 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include <QObject>
 #include <QTimer>
 
 #include <functional>
+
+namespace dshinqt {
 
 class AppSettings;
 class ReadyWaiter;
@@ -69,3 +71,5 @@ private:
     QString m_sourceFile;
     qint64 m_logPos = 0;
 };
+
+} // namespace dshinqt

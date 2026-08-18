@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <QMainWindow>
 
@@ -9,6 +9,9 @@
 class QStackedWidget;
 class QCloseEvent;
 class QLabel;
+
+namespace dshinqt {
+
 class GitClient;
 class HomePage;
 class LogView;
@@ -64,3 +67,5 @@ private:
     QLabel *m_statusLabel = nullptr; // 状态栏右侧状态消息（替代 showMessage）
     bool m_buildFromSetup = false;
 };
+
+} // namespace dshinqt

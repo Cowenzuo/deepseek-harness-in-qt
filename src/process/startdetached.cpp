@@ -1,4 +1,6 @@
-﻿#include "startwrapped.h"
+#include "startwrapped.h"
+
+namespace dshinqt {
 
 namespace {
 QString shellQuote(const QString &s)
@@ -108,3 +110,5 @@ bool startDetachedWrapped(const QString &program, const QStringList &args, const
 }
 
 #endif
+
+} // namespace dshinqt

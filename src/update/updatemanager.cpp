@@ -1,4 +1,4 @@
-﻿#include "updatemanager.h"
+#include "updatemanager.h"
 
 #include <QProcess>
 
@@ -6,6 +6,8 @@
 #include "process/proxydetector.h"
 #include "process/startwrapped.h"
 #include "settings/appsettings.h"
+
+namespace dshinqt {
 
 UpdateManager::UpdateManager(AppSettings *settings, GitClient *git, DshProcessManager *proc, QObject *parent)
     : QObject(parent)
@@ -186,3 +188,5 @@ void UpdateManager::done()
     setStage(Stage::Idle);
     emit finished(true, QString());
 }
+
+} // namespace dshinqt

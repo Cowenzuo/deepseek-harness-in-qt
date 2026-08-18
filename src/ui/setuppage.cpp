@@ -1,4 +1,4 @@
-﻿#include "setuppage.h"
+#include "setuppage.h"
 
 #include <QColor>
 #include <QDir>
@@ -14,6 +14,8 @@
 
 #include "process/environmentchecker.h"
 #include "settings/appsettings.h"
+
+namespace dshinqt {
 
 SetupPage::SetupPage(AppSettings *settings, EnvironmentChecker *env, QWidget *parent)
     : QWidget(parent)
@@ -411,4 +413,6 @@ QLineEdit[invalid="true"] { border: 1px solid #e05f5f; }
 }
 #secondary:hover { background: #35353b; color: #ffffff; }
 )"));
+
+} // namespace dshinqt
 }

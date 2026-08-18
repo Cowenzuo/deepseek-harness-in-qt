@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <QWidget>
 
 class QTextEdit;
+
+namespace dshinqt {
 
 class LogView : public QWidget
 {
@@ -17,3 +19,5 @@ public:
 private:
     QTextEdit *m_text = nullptr;
 };
+
+} // namespace dshinqt

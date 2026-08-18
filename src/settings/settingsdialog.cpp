@@ -1,4 +1,4 @@
-﻿#include "settingsdialog.h"
+#include "settingsdialog.h"
 
 #include "appsettings.h"
 #include "git/gitclient.h"
@@ -26,6 +26,8 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
+
+namespace dshinqt {
 
 namespace {
 QLabel *fieldTitle(const QString &text, QWidget *parent)
@@ -682,3 +684,5 @@ void SettingsDialog::onNavChanged(int row)
     if (row >= 0 && row < m_pages->count())
         m_pages->setCurrentIndex(row);
 }
+
+} // namespace dshinqt
