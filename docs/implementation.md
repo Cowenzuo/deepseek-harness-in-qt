@@ -1,4 +1,4 @@
-# deepseek-harness 本地客户端外壳（dshinqt）技术方案
+﻿# deepseek-harness 本地客户端外壳（dshinqt）技术方案
 
 > 文档状态：已同步至当前实现（对应 git commit `9a5a4ad` 及后续 refactor）。
 > 本文描述**实际代码结构**与关键技术路径；早期设计中的差异在对应小节注明。
@@ -49,7 +49,7 @@ dshinqt/
 │   │   ├── readywaiter.{h,cpp}         # 端口就绪轮询（__DSH_BOOT__ 正面判定）+ probeOnce
 │   │   ├── proxydetector.{h,cpp}       # 系统代理检测 → git 参数 / pnpm 环境变量
 │   │   ├── startwrapped.h              # cmd.exe /c 包装 shim（内联）
-│   │   └── startdetached.cpp           # 分离启动（CreateProcessW + DETACHED_PROCESS）
+│   │   └── startdetached.cpp           # 分离启动（CreateProcessW + CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点））
 │   ├── git/
 │   │   └── gitclient.{h,cpp}           # subprocess 调 git（同步，20s 超时，注入代理）
 │   ├── update/
@@ -187,7 +187,7 @@ classDiagram
 | `HomePage` | webview 主页与就绪判定 | 正面锚点轮询（`[data-composer-card]`+`[data-conversation-scroll]`）；10s 自愈 reload；60s 超时 pageFailed |
 | `SetupPage` | 引导页 | 四项路径 + 实时状态 + 校验/一键构建/克隆；校验通过写回 settings |
 | `LogView` | 日志页 | `appendLog(line, isError)`；`\r` 进度覆盖符转行；错误行红色 |
-| `startWrapped`/`startDetachedWrapped` | 进程启动工具 | shim 经 `cmd.exe /c`；分离启动经 `CreateProcessW + DETACHED_PROCESS`（Windows）/ `/bin/sh -c`（其他） |
+| `startWrapped`/`startDetachedWrapped` | 进程启动工具 | shim 经 `cmd.exe /c`；分离启动经 `CreateProcessW + CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点）`（Windows）/ `/bin/sh -c`（其他） |
 
 ## 4. 关键技术路径
 
@@ -218,7 +218,7 @@ flowchart TD
 
 ### 4.2 常驻服务与监督
 
-- **分离启动**（`startdetached.cpp`）：Windows 用 `CreateProcessW`，标志 `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`；stdin→NUL，stdout/stderr 句柄重定向到 `config/dsh-web.log`（`STARTF_USESTDHANDLES` + 继承句柄），进程完全脱离外壳，关闭外壳不影响。
+- **分离启动**（`startdetached.cpp`）：Windows 用 `CreateProcessW`，标志 `CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点） | CREATE_NEW_PROCESS_GROUP`；stdin→NUL，stdout/stderr 句柄重定向到 `config/dsh-web.log`（`STARTF_USESTDHANDLES` + 继承句柄），进程完全脱离外壳，关闭外壳不影响。
 - **状态监督**：不持有子进程句柄（句柄已 CloseHandle）。`ReadyWaiter.wait` 就绪后，1s 定时器增量 tail 日志文件（`m_logPos` 记录偏移，UTF-8 按行拆发 `logOutput`）。
 - **端口反查**（`inspectAsync`，Windows）：`netstat -ano` 找 `:<port>` + `LISTENING` 的 PID → `powershell -Command "Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>'"` 取 CommandLine/ExecutablePath → 命令行含 `bin.ts` 判定是 dsh → 候选源码根探测（配置路径 → 命令行中绝对 `apps/cli/src/bin.ts` 路径的上一级 → `D:/framework/deepseek-harness`），命中条件 = `apps/cli/src/bin.ts` 与 `pnpm-workspace.yaml` 都存在。
 - **记录文件**：`config/service-source.txt` 记录本次启动的源码路径，用于 attach 匹配判定；停止时删除。
@@ -299,7 +299,7 @@ flowchart TD
 ### 6.1 分离启动（核心逻辑示意，Windows）
 
 ```cpp
-// startdetached.cpp：node 直启 dsh，DETACHED_PROCESS 脱离外壳
+// startdetached.cpp：node 直启 dsh，CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点） 脱离外壳
 QString cmd = shellQuote(node);                       // node.exe
 for (const QString &a : args)
     cmd += ' ' + shellQuote(a);
@@ -315,7 +315,7 @@ si.hStdError  = hLog;
 
 CreateProcessW(nullptr, cmdLine,
     nullptr, nullptr, TRUE,                             // 继承句柄
-    DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+    CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点） | CREATE_NEW_PROCESS_GROUP,
     nullptr, workingDirectory, &si, &pi);
 ```
 

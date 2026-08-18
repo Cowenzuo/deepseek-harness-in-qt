@@ -21,7 +21,7 @@
   5. pnpm：`pnpm -v` 可解析。
   - `autoDetect`：PATH 探测回填 settings 空字段。
 - [x] `src/process/preflightchecker.{h,cpp}`：依赖与构建产物体检（node_modules / apps/web/dist / packages lib 三项），供 `startService` 使用。
-- [x] `src/process/startdetached.cpp` + `startwrapped.h`：分离启动——Windows `CreateProcessW + DETACHED_PROCESS + CREATE_NEW_PROCESS_GROUP`，stdout/stderr 句柄重定向 `config/dsh-web.log`，stdin→NUL，SW_HIDE；`.cmd/.bat/.ps1` shim 经 `cmd.exe /c` 包装；非 Windows `/bin/sh -c`。
+- [x] `src/process/startdetached.cpp` + `startwrapped.h`：分离启动——Windows `CreateProcessW + CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点） + CREATE_NEW_PROCESS_GROUP`，stdout/stderr 句柄重定向 `config/dsh-web.log`，stdin→NUL，SW_HIDE；`.cmd/.bat/.ps1` shim 经 `cmd.exe /c` 包装；非 Windows `/bin/sh -c`。
 - [x] `src/process/dshprocessmanager.{h,cpp}`：
   - 状态机：`Idle / Starting / Running / Stopping / Crashed`。
   - `start()`：异步 `killByPort` 清理残留 → `beginLaunch()`（`node --import tsx/esm apps/cli/src/bin.ts web --host 127.0.0.1 --port <N>`，工作目录=源码路径）→ 写 `service-source.txt` → ReadyWaiter 就绪轮询。
@@ -50,7 +50,7 @@
 
 | 早期设计 | 实际实现 |
 | --- | --- |
-| `QProcess` 子进程，外壳退出即结束 | **分离常驻服务**（DETACHED_PROCESS），关窗不杀，重启外壳自动连接 |
+| `QProcess` 子进程，外壳退出即结束 | **分离常驻服务**（CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点）），关窗不杀，重启外壳自动连接 |
 | 启动命令 = launchCommand + 追加 `--host/--port` | 固定 `node --import tsx/esm apps/cli/src/bin.ts web ...`，无 launchCommand |
 | 崩溃判定：finished 信号 + 退出码 | 无子进程句柄：就绪超时 / 启动失败 → Crashed；状态由端口探测 + 日志 tail 监督 |
 | 体检失败 → 提示 + 一键构建 | 引导页（SetupPage）：补路径 / 一键构建 / 克隆仓库 |

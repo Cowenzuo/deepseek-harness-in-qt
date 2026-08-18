@@ -8,8 +8,10 @@ namespace dshinqt {
 
 #include <vector>
 
-// Windows：用 CreateProcessW + DETACHED_PROCESS 分离启动（真正的后台进程）。
-// DETACHED_PROCESS：不继承、不新建控制台，关闭外壳/终端都不影响；
+// Windows：用 CreateProcessW + CREATE_NEW_CONSOLE 分离启动（真正的后台进程）。
+// CREATE_NEW_CONSOLE + SW_HIDE：给 node 一个隐藏控制台——dsh 内 agent 执行的命令行
+// 子进程（cmd/powershell 等）会继承该隐藏控制台，而不是各自新建窗口，避免
+// 「窗口一闪而过 + 抢焦点」；控制台与外壳进程无生命周期绑定，外壳退出服务照常运行。
 // CREATE_NEW_PROCESS_GROUP：隔离 Ctrl+C。
 // 可执行文件（.exe）直接启动，不经过 cmd.exe；仅 .cmd/.bat/.ps1 shim 才用 cmd.exe 包装。
 // stdout/stderr 通过 STARTUPINFO 句柄直接重定向到 logFile。
@@ -69,7 +71,7 @@ bool startDetachedWrapped(const QString &program, const QStringList &args, const
                                    nullptr,
                                    nullptr, // 进程/线程安全属性
                                    TRUE,    // 继承句柄（stdout/stderr 重定向可传播）
-                                   DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+                                   CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP,
                                    nullptr, // 环境（继承）
                                    wd.empty() ? nullptr : wd.c_str(),
                                    &si,

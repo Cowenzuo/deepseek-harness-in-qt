@@ -1,4 +1,4 @@
-# deepseek-harness 本地客户端外壳（dshinqt）规格说明（定版）
+﻿# deepseek-harness 本地客户端外壳（dshinqt）规格说明（定版）
 
 > 文档状态：已同步至当前实现（对应 git commit `9a5a4ad` 及后续 refactor）。
 > 本文为**实现级规格**，与代码行为一一对应。
@@ -153,7 +153,7 @@ ensureRunning()                     # 异步端口探测（probeOnce 单次 GET�
 
 ## 7. 技术要点
 
-- 进程：分离启动 `CreateProcessW + DETACHED_PROCESS + CREATE_NEW_PROCESS_GROUP`（Windows）/ `/bin/sh -c`（其他）；stdout/stderr 重定向到日志文件。
+- 进程：分离启动 `CreateProcessW + CREATE_NEW_CONSOLE（隐藏控制台，避免子命令闪窗抢焦点） + CREATE_NEW_PROCESS_GROUP`（Windows）/ `/bin/sh -c`（其他）；stdout/stderr 重定向到日志文件。
 - 就绪轮询：`QNetworkAccessManager` 周期 GET；服务层判 `__DSH_BOOT__`，界面层判正面锚点。
 - 配置：`QJsonDocument` + exe 旁 `config/config.json`。
 - Git：subprocess 调系统 `git`，注入代理 `-c http.proxy=<proxy> -c https.proxy=<proxy>`。
