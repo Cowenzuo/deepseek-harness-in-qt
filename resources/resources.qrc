@@ -2,4 +2,12 @@
     <qresource prefix="/">
         <file>app.ico</file>
     </qresource>
+    <qresource prefix="/icons">
+        <file>icons/settings.svg</file>
+        <file>icons/settings-active.svg</file>
+        <file>icons/log.svg</file>
+        <file>icons/log-active.svg</file>
+        <file>icons/refresh.svg</file>
+        <file>icons/refresh-active.svg</file>
+    </qresource>
 </RCC>
