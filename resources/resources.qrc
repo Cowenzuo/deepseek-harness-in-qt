@@ -15,5 +15,7 @@
         <file>icons/wrench.svg</file>
         <file>icons/wrench-active.svg</file>
         <file>icons/info.svg</file>
+        <file>icons/external.svg</file>
+        <file>icons/external-active.svg</file>
     </qresource>
 </RCC>

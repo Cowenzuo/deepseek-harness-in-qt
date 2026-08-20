@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QDateTime>
 #include <QDebug>
+#include <QDesktopServices>
 #include <QGridLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -173,6 +174,14 @@ QPushButton:pressed { background: #2f3550; }
                                   QStringLiteral("会话快速修复"));
     connect(repairBtn, &QPushButton::clicked, this, [this] { openSettings(/*修复页*/ 3); });
     statusBar()->addWidget(repairBtn);
+
+    // 开放平台：一键外开 DeepSeek 控制台（用量/余额/充值/API Key 管理均需登录网页）
+    auto *platformBtn = makeIconBtn(QStringLiteral(":/icons/external.svg"), QStringLiteral(":/icons/external-active.svg"),
+                                    QStringLiteral("打开 DeepSeek 开放平台"));
+    connect(platformBtn, &QPushButton::clicked, this, [] {
+        QDesktopServices::openUrl(QUrl(QStringLiteral("https://platform.deepseek.com")));
+    });
+    statusBar()->addWidget(platformBtn);
 
     auto *reloadBtn = makeIconBtn(QStringLiteral(":/icons/refresh.svg"), QStringLiteral(":/icons/refresh-active.svg"),
                                   QStringLiteral("刷新 dsh Web UI（F5）"));
