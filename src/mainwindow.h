@@ -1,8 +1,10 @@
 #pragma once
 
+#include <QFutureWatcher>
 #include <QMainWindow>
 
 #include "process/buildflowmanager.h"
+#include "process/buildstaleness.h"
 #include "process/dshprocessmanager.h"
 #include "settings/appsettings.h"
 #include "update/updatemanager.h"
@@ -44,10 +46,12 @@ private slots:
     void onBuildFinished(bool success, const QString &error, BuildFlowManager::Origin origin);
     void onUpdateStageChanged(UpdateManager::Stage stage);
     void onUpdateFinished(bool success, const QString &error);
+    void onStaleCheckFinished(); // 启动前构建产物自检完成（后台 git 读取）
 
 private:
     void continueToService();
     void startService();
+    void checkStaleBuildAndProceed(); // 外部 git pull 后产物过期 → 提示重建再启动
     void runOneClickBuild(BuildFlowManager::Origin origin);
     void startClone();
     void showSetupPage();
@@ -66,6 +70,7 @@ private:
     GitClient *m_git = nullptr;
     UpdateManager *m_update = nullptr;
     BuildFlowManager *m_buildFlow = nullptr;
+    QFutureWatcher<BuildStalenessInfo> *m_staleWatcher = nullptr; // 启动前产物自检（后台 git）
     QLabel *m_statusLabel = nullptr; // 状态栏右侧状态消息（替代 showMessage）
 };
 

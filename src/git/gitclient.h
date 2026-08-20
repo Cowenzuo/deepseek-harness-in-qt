@@ -59,6 +59,8 @@ public:
     QList<GitCommit> searchCommits(const QString &keyword, int limit = 200, const QString &cwd = {});
     // 与上游相比的领先/落后提交数；无上游或失败返回 false
     bool aheadBehind(int *ahead, int *behind, const QString &cwd = {});
+    // HEAD 提交的短哈希与提交时间（Unix 秒）；非 git 仓库/命令失败返回 false
+    bool headCommit(QString *hash7, qint64 *epochSec, const QString &cwd = {});
     bool fetch(QString *errorOut = nullptr, const QString &cwd = {});
     bool checkoutBranch(const QString &name, QString *errorOut = nullptr, const QString &cwd = {});
     bool checkoutCommit(const QString &hash, QString *errorOut = nullptr, const QString &cwd = {});

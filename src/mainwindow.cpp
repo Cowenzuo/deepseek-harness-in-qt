@@ -2,6 +2,7 @@
 
 #include <QCloseEvent>
 #include <QColor>
+#include <QDateTime>
 #include <QDebug>
 #include <QGridLayout>
 #include <QLabel>
@@ -13,6 +14,7 @@
 #include <QStatusBar>
 #include <QTimer>
 #include <QUrl>
+#include <QtConcurrent>
 
 #include "git/gitclient.h"
 #include "ui/theme.h"
@@ -99,6 +101,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_git = new GitClient(&m_settings, this);
     m_update = new UpdateManager(&m_settings, m_git, m_process, this);
     m_buildFlow = new BuildFlowManager(&m_settings, this);
+    m_staleWatcher = new QFutureWatcher<BuildStalenessInfo>(this);
+    connect(m_staleWatcher, &QFutureWatcher<BuildStalenessInfo>::finished, this,
+            &MainWindow::onStaleCheckFinished);
 
     connect(m_process, &DshProcessManager::stateChanged, this, &MainWindow::onDshStateChanged);
     connect(m_process, &DshProcessManager::logOutput, this, &MainWindow::onDshLog);
@@ -261,7 +266,60 @@ void MainWindow::onSetupFinished()
 void MainWindow::continueToService()
 {
     qDebug() << "[UI] continueToService";
-    // 服务在且匹配 → attach；不匹配 → 杀旧启新；不在 → 启动
+    // 启动前自检：外部 git pull 后构建产物过期时提示重建，避免"跑着旧构建"导致页面异常
+    checkStaleBuildAndProceed();
+}
+
+// 启动前构建产物自检（异步，不阻塞 UI）：
+// 后台线程取 HEAD 提交时间 + dist/index.html 修改时间；过期则在主线程弹确认框。
+// 判据见 buildstaleness.h；git 不可用/非仓库/产物新鲜 → 直接走原启动流程。
+void MainWindow::checkStaleBuildAndProceed()
+{
+    if (m_staleWatcher->isRunning())
+        return; // 检查在途，忽略重复触发
+    if (!EnvironmentChecker::isSourceValid(m_settings.sourcePath)) {
+        m_process->ensureRunning(); // 源码路径无效：原流程（体检/引导页兜底）
+        return;
+    }
+    const QString src = m_settings.sourcePath;
+    GitClient *git = m_git;
+    m_staleWatcher->setFuture(QtConcurrent::run([git, src]() {
+        BuildStalenessInfo info;
+        info.distMtimeMs = distIndexMtimeMs(src);
+        git->headCommit(&info.hash7, &info.commitEpochSec, src);
+        return info;
+    }));
+}
+
+void MainWindow::onStaleCheckFinished()
+{
+    const BuildStalenessInfo info = m_staleWatcher->result();
+    if (info.commitEpochSec < 0) {
+        m_process->ensureRunning(); // 非 git 仓库/取不到提交 → 无法判定，原流程
+        return;
+    }
+    if (!isDistStale(info.commitEpochSec, info.distMtimeMs)) {
+        m_process->ensureRunning(); // 产物新鲜（含外部手工构建过）
+        return;
+    }
+
+    const QString date = QDateTime::fromSecsSinceEpoch(info.commitEpochSec)
+                             .toString(QStringLiteral("yyyy-MM-dd HH:mm"));
+    const auto choice = QMessageBox::question(
+        this, QStringLiteral("检测到源码更新"),
+        QStringLiteral("仓库已更新到 %1（提交于 %2），当前构建产物（apps/web/dist）早于该提交。\n"
+                       "不重建直接启动，页面可能因产物过期而异常。\n\n是否立即重新构建？")
+            .arg(info.hash7, date),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (choice == QMessageBox::Yes) {
+        qDebug() << "[UI] 构建产物过期，用户确认重建";
+        if (m_process->isRunning())
+            m_process->stop(); // 旧服务（旧产物）先停；构建完成后 startService 重新拉起
+        showLogPage();         // 构建进度走 CLI 视口
+        m_buildFlow->startOneClickBuild(BuildFlowManager::Origin::Startup);
+        return;
+    }
+    qDebug() << "[UI] 用户选择直接启动（产物可能过期）";
     m_process->ensureRunning();
 }
 
@@ -338,6 +396,9 @@ void MainWindow::onBuildFinished(bool success, const QString &error, BuildFlowMa
             QMessageBox::warning(this, QStringLiteral("构建失败"), error);
             m_setupPage->recheck();
             showSetupPage();
+        } else if (origin == BuildFlowManager::Origin::Startup) {
+            // 启动前重建失败：回错误页（可重试构建），日志页已展示失败细节
+            showErrorPage(QStringLiteral("重新构建失败，请查看日志页确认原因。"), /*canBuild=*/true);
         }
         // 错误页来源：仅日志记录（原行为），用户可回错误页重试
         return;
@@ -347,7 +408,7 @@ void MainWindow::onBuildFinished(bool success, const QString &error, BuildFlowMa
         m_setupPage->recheck();
         showSetupPage();
     } else {
-        startService();
+        startService(); // ErrorPage / Startup：构建成功后直接启动服务
     }
 }
 

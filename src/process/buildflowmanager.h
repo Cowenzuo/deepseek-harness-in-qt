@@ -18,7 +18,8 @@ class BuildFlowManager : public QObject
     Q_OBJECT
 
 public:
-    enum class Origin { SetupPage, ErrorPage }; // 发起来源：决定完成后回引导页还是启动服务
+    // 发起来源：决定完成后回引导页（SetupPage）、启动服务（ErrorPage/Startup）还是报错页
+    enum class Origin { SetupPage, ErrorPage, Startup };
     Q_ENUM(Origin)
 
     explicit BuildFlowManager(AppSettings *settings, QObject *parent = nullptr);

@@ -57,6 +57,29 @@ QString GitClient::currentBranch(const QString &cwd)
     return run({QStringLiteral("branch"), QStringLiteral("--show-current")}, cwd).trimmed();
 }
 
+bool GitClient::headCommit(QString *hash7, qint64 *epochSec, const QString &cwd)
+{
+    QString err;
+    const QString out = run({QStringLiteral("log"), QStringLiteral("-1"),
+                             QStringLiteral("--format=%h%x09%ct")},
+                            cwd, &err, 10000);
+    const QStringList parts = out.split(QLatin1Char('\t'));
+    bool ok = false;
+    const qint64 sec = parts.size() >= 2 ? parts[1].trimmed().toLongLong(&ok) : -1;
+    if (parts.size() < 2 || !ok) {
+        if (hash7)
+            *hash7 = QString();
+        if (epochSec)
+            *epochSec = -1;
+        return false;
+    }
+    if (hash7)
+        *hash7 = parts[0].trimmed();
+    if (epochSec)
+        *epochSec = sec;
+    return true;
+}
+
 bool GitClient::isDirty(const QString &cwd)
 {
     QString err;

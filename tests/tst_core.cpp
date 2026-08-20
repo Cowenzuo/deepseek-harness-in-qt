@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include "git/gitclient.h"
+#include "process/buildstaleness.h"
 #include "process/environmentchecker.h"
 #include "process/proxydetector.h"
 #include "process/readywaiter.h"
@@ -23,6 +24,8 @@ private slots:
     void clampPort_data();
     void clampPort();
     void downloadDirectory();
+    void isDistStale_data();
+    void isDistStale();
 };
 
 void TestCore::toProxyUrl_data()
@@ -122,6 +125,31 @@ void TestCore::downloadDirectory()
     QCOMPARE(s.downloadDirectory(), QStringLiteral("D:/tmp/dl"));
     s.downloadPath = QStringLiteral("  D:/tmp/dl2  ");
     QCOMPARE(s.downloadDirectory(), QStringLiteral("D:/tmp/dl2"));
+}
+
+void TestCore::isDistStale_data()
+{
+    QTest::addColumn<qint64>("commitSec");
+    QTest::addColumn<qint64>("mtimeMs");
+    QTest::addColumn<bool>("expected");
+    // 产物缺失 → 过期
+    QTest::newRow("missing") << qint64(1000) << qint64(-1) << true;
+    // 产物早于提交 → 过期
+    QTest::newRow("older-than-commit") << qint64(2000) << qint64(1000 * 1000) << true;
+    // 产物与提交同时 → 新鲜（边界）
+    QTest::newRow("equal") << qint64(1000) << qint64(1000 * 1000) << false;
+    // 产物晚于提交 → 新鲜（含外部手工构建）
+    QTest::newRow("newer-than-commit") << qint64(1000) << qint64(2000 * 1000) << false;
+    QTest::newRow("fresh-after-day") << qint64(1787152310) << qint64(1787152310LL * 1000 + 3600 * 1000) << false;
+}
+
+void TestCore::isDistStale()
+{
+    QFETCH(qint64, commitSec);
+    QFETCH(qint64, mtimeMs);
+    QFETCH(bool, expected);
+    // 限定命名空间：成员函数与自由函数同名，避免类内查找遮蔽
+    QCOMPARE(dshinqt::isDistStale(commitSec, mtimeMs), expected);
 }
 
 QTEST_MAIN(TestCore)
