@@ -51,6 +51,16 @@ GeneralSettingsPage::GeneralSettingsPage(AppSettings *settings, DshProcessManage
     auto *downloadBrowseBtn = new QPushButton(QStringLiteral("浏览..."), this);
     downloadBrowseBtn->setCursor(Qt::PointingHandCursor);
     downloadBrowseBtn->setFocusPolicy(Qt::NoFocus);
+    // 与 QLineEdit 相同的 padding/border/圆角，保证与输入框等高等视觉对齐
+    // （弹窗 QSS 只样式化了 QLineEdit，未样式化的按钮是 Fusion 默认矮高度）
+    downloadBrowseBtn->setStyleSheet(QStringLiteral(R"(
+QPushButton {
+    background: #2c2c31; border: 1px solid #38383e; border-radius: 8px;
+    padding: 8px 12px; color: #d6d6db; font-size: 13px;
+}
+QPushButton:hover { background: #35353b; border-color: #4f8cff; color: #ffffff; }
+QPushButton:pressed { background: #2f3550; }
+)"));
     connect(downloadBrowseBtn, &QPushButton::clicked, this, [this]() {
         const QString dir = QFileDialog::getExistingDirectory(
             this, QStringLiteral("选择下载目录"),
