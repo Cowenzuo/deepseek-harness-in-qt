@@ -16,6 +16,7 @@
 #include <QVariant>
 #include <QWebEngineDownloadRequest>
 #include <QWebEnginePage>
+#include <QWebEnginePermission>
 #include <QWebEngineProfile>
 #include <QWebEngineView>
 
@@ -107,6 +108,24 @@ void HomePage::ensureWebView()
             });
         });
         qDebug() << "[UI] 下载信号已接入 profile=" << profile;
+    }
+
+    // 剪贴板权限：页面复制按钮走 navigator.clipboard.writeText（dsh 的 writeClipboard
+    // 在异步 API 存在时不会走 execCommand 兜底），其权限请求 QtWebEngine 默认拒绝，
+    // 壳不响应则 promise reject、UI 无任何反馈（表现即"点了没反应"）。
+    // 本 UI 是本地可信页面（127.0.0.1），授予读写剪贴板，其余权限类型拒绝并留日志。
+    {
+        connect(m_webView->page(), &QWebEnginePage::permissionRequested, this,
+                [this](QWebEnginePermission permission) {
+            if (permission.permissionType() == QWebEnginePermission::PermissionType::ClipboardReadWrite) {
+                qDebug() << "[UI] 授予剪贴板权限 origin=" << permission.origin();
+                permission.grant();
+                return;
+            }
+            qDebug() << "[UI] 拒绝权限请求 type=" << int(permission.permissionType())
+                     << "origin=" << permission.origin();
+            permission.deny();
+        });
     }
 
     qobject_cast<QVBoxLayout *>(layout())->addWidget(m_webView); // ensureWebView 仅在构造末尾调用，layout 必为 QVBoxLayout
