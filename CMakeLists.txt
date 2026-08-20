@@ -59,6 +59,9 @@ install(TARGETS deepseek-harness-in-qt
     BUNDLE  DESTINATION .
 )
 
+# 会话修复脚本（设置页「会话修复」调用，node --import tsx/esm 运行）
+install(FILES tools/session-repair.mts DESTINATION bin/tools)
+
 # 生成部署脚本（Windows 用 windeployqt / macOS 用 macdeployqt），
 # 随 install 自动把 Qt 运行时（含 QtWebEngineProcess.exe）拷到安装目录。
 qt_generate_deploy_app_script(

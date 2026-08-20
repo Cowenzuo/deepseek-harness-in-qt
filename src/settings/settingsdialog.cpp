@@ -1,4 +1,4 @@
-﻿#include "settingsdialog.h"
+#include "settingsdialog.h"
 
 #include <QHBoxLayout>
 #include <QListWidget>
@@ -13,6 +13,7 @@
 #include "process/dshprocessmanager.h"
 #include "repoupdatepage.h"
 #include "servicepage.h"
+#include "sessionrepairpage.h"
 #include "update/updatemanager.h"
 
 namespace dshinqt {
@@ -96,6 +97,7 @@ QTreeWidget::branch { background: transparent; }
     const QStringList navTexts = {QStringLiteral("⚙\n常\n规"),
                                   QStringLiteral("◉\n服\n务"),
                                   QStringLiteral("⇄\n更\n新"),
+                                  QStringLiteral("⚒\n修\n复"),
                                   QStringLiteral("ℹ\n关\n于")};
     const int navHeight = 92; // 各 tab 等高，视觉整齐
     for (int i = 0; i < navTexts.size(); ++i) {
@@ -110,10 +112,12 @@ QTreeWidget::branch { background: transparent; }
     auto *generalPage = new GeneralSettingsPage(settings, proc, this);
     auto *servicePage = new ServiceSettingsPage(settings, proc, this);
     auto *repoPage = new RepoUpdatePage(settings, git, update, this);
+    auto *repairPage = new SessionRepairPage(settings, this);
     auto *aboutPage = new AboutPage(this);
     m_pages->addWidget(generalPage);
     m_pages->addWidget(servicePage);
     m_pages->addWidget(repoPage);
+    m_pages->addWidget(repairPage);
     m_pages->addWidget(aboutPage);
 
     // 页间协作：保存配置前等待更新页在途后台线程，保存成功后刷新仓库信息
