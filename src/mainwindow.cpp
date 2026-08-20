@@ -313,9 +313,15 @@ void MainWindow::onStaleCheckFinished()
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (choice == QMessageBox::Yes) {
         qDebug() << "[UI] 构建产物过期，用户确认重建";
-        if (m_process->isRunning())
+        // 立即给出可见反馈：pnpm 首行输出有 1~2s 启动延迟，
+        // 若日志页空白会让人误以为程序卡死
+        m_logView->appendLog(
+            QStringLiteral("[构建] 检测到构建产物过期（HEAD %1 提交于 %2），开始重新构建...").arg(info.hash7, date));
+        if (m_process->isRunning()) {
+            m_logView->appendLog(QStringLiteral("[构建] 正在停止旧服务..."));
             m_process->stop(); // 旧服务（旧产物）先停；构建完成后 startService 重新拉起
-        showLogPage();         // 构建进度走 CLI 视口
+        }
+        showLogPage(); // 构建进度走 CLI 视口
         m_buildFlow->startOneClickBuild(BuildFlowManager::Origin::Startup);
         return;
     }
@@ -380,12 +386,15 @@ void MainWindow::onErrorBuild()
 void MainWindow::runOneClickBuild(BuildFlowManager::Origin origin)
 {
     showLogPage(); // 切到 CLI 视口，完整呈现 pnpm 输出
+    // 先给即时反馈：pnpm 首行输出有启动延迟，空白会让人误以为卡死
+    m_logView->appendLog(QStringLiteral("[构建] 开始构建：pnpm install && pnpm run build"));
     m_buildFlow->startOneClickBuild(origin);
 }
 
 void MainWindow::startClone()
 {
     showLogPage(); // 切到 CLI 视口，完整呈现 git 输出（含 Receiving objects 进度）
+    m_logView->appendLog(QStringLiteral("[构建] 开始克隆仓库：%1").arg(m_settings.repoUrl));
     m_buildFlow->startClone();
 }
 
@@ -408,7 +417,9 @@ void MainWindow::onBuildFinished(bool success, const QString &error, BuildFlowMa
         m_setupPage->recheck();
         showSetupPage();
     } else {
-        startService(); // ErrorPage / Startup：构建成功后直接启动服务
+        // ErrorPage / Startup：构建成功后直接启动服务（先给收尾反馈）
+        m_logView->appendLog(QStringLiteral("[构建] 构建完成，正在启动服务..."));
+        startService();
     }
 }
 

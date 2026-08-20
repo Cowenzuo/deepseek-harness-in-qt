@@ -20,8 +20,10 @@ BuildFlowManager::BuildFlowManager(AppSettings *settings, QObject *parent)
 
 void BuildFlowManager::startOneClickBuild(Origin origin)
 {
-    if (m_busy)
+    if (m_busy) {
+        emit logOutput(QStringLiteral("[构建] 已有构建任务进行中，本次请求已忽略"), false);
         return;
+    }
     m_origin = origin;
     m_busy = true;
     beginInstall();
@@ -29,8 +31,10 @@ void BuildFlowManager::startOneClickBuild(Origin origin)
 
 void BuildFlowManager::startClone()
 {
-    if (m_busy)
+    if (m_busy) {
+        emit logOutput(QStringLiteral("[构建] 已有构建任务进行中，本次请求已忽略"), false);
         return;
+    }
     m_origin = Origin::SetupPage; // 克隆仅在引导页发起
     m_busy = true;
 
