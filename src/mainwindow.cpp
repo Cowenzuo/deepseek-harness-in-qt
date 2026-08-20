@@ -160,13 +160,19 @@ QPushButton:pressed { background: #2f3550; }
 
     auto *settingsBtn = makeIconBtn(QStringLiteral(":/icons/settings.svg"), QStringLiteral(":/icons/settings-active.svg"),
                                     QStringLiteral("打开设置"));
-    connect(settingsBtn, &QPushButton::clicked, this, &MainWindow::openSettings);
+    connect(settingsBtn, &QPushButton::clicked, this, [this] { openSettings(); });
     statusBar()->addWidget(settingsBtn); // 左侧
 
     auto *logBtn = makeIconBtn(QStringLiteral(":/icons/log.svg"), QStringLiteral(":/icons/log-active.svg"),
                                QStringLiteral("打开日志页"));
     connect(logBtn, &QPushButton::clicked, this, &MainWindow::showLogPage);
     statusBar()->addWidget(logBtn);
+
+    // 快速修复：直达设置弹窗「修复」页（会话日志损坏时少两步）
+    auto *repairBtn = makeIconBtn(QStringLiteral(":/icons/wrench.svg"), QStringLiteral(":/icons/wrench-active.svg"),
+                                  QStringLiteral("会话快速修复"));
+    connect(repairBtn, &QPushButton::clicked, this, [this] { openSettings(/*修复页*/ 3); });
+    statusBar()->addWidget(repairBtn);
 
     auto *reloadBtn = makeIconBtn(QStringLiteral(":/icons/refresh.svg"), QStringLiteral(":/icons/refresh-active.svg"),
                                   QStringLiteral("刷新 dsh Web UI（F5）"));
@@ -217,9 +223,9 @@ void MainWindow::showLogPage()
     m_pages->setCurrentWidget(m_logView);
 }
 
-void MainWindow::openSettings()
+void MainWindow::openSettings(int page)
 {
-    SettingsDialog dlg(&m_settings, m_git, m_update, m_process, this);
+    SettingsDialog dlg(&m_settings, m_git, m_update, m_process, this, page);
     dlg.exec();
 }
 

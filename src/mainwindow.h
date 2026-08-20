@@ -37,7 +37,7 @@ protected:
 private slots:
     void showHomePage();
     void showLogPage();
-    void openSettings();
+    void openSettings(int page = 0); // page：设置弹窗初始导航页（0=常规，3=修复）
     void onDshStateChanged(DshProcessManager::State state);
     void onDshLog(const QString &line, bool isError);
     void onSetupFinished();

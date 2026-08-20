@@ -20,8 +20,9 @@
 namespace dshinqt {
 
 SettingsDialog::SettingsDialog(AppSettings *settings, GitClient *git, UpdateManager *update, DshProcessManager *proc,
-                               QWidget *parent)
+                               QWidget *parent, int initialPage)
     : QDialog(parent)
+    , m_initialPage(initialPage)
 {
     setWindowTitle(QStringLiteral("设置"));
     setModal(true);
@@ -133,7 +134,7 @@ QTreeWidget::branch { background: transparent; }
     connect(generalPage, &GeneralSettingsPage::saved, repoPage, &RepoUpdatePage::refreshRepo);
 
     // 必须在 m_pages 建好之后再设当前行（否则 currentRowChanged 触发时页面容器为空）
-    m_nav->setCurrentRow(0);
+    m_nav->setCurrentRow(m_initialPage);
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(20, 16, 20, 20);

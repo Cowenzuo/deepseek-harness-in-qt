@@ -24,7 +24,7 @@ class SettingsDialog : public QDialog
 
 public:
     explicit SettingsDialog(AppSettings *settings, GitClient *git, UpdateManager *update, DshProcessManager *proc,
-                            QWidget *parent = nullptr);
+                            QWidget *parent = nullptr, int initialPage = 0);
 
 private slots:
     void onNavChanged(int row); // 左侧导航切换页面
@@ -32,6 +32,7 @@ private slots:
 private:
     QListWidget *m_nav = nullptr;
     QStackedWidget *m_pages = nullptr;
+    int m_initialPage = 0; // 打开时定位的导航页（状态栏「修复」入口直达修复页）
 };
 
 } // namespace dshinqt
