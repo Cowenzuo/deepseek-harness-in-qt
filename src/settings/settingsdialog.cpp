@@ -1,6 +1,7 @@
 #include "settingsdialog.h"
 
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QSize>
@@ -36,15 +37,16 @@ QStackedWidget {
 }
 QListWidget#nav {
     background: #18181c; border: none; border-right: 1px solid #26262b;
-    outline: none; padding: 18px 8px; font-size: 12px;
+    outline: none; padding: 16px 8px; font-size: 13px;
 }
 QListWidget#nav::item {
-    color: #9a9aa0; background: #222227; border: 1px solid #2e2e34;
-    border-radius: 9px; margin: 6px 2px; padding: 12px 2px;
+    color: #9a9aa0; background: transparent; border: none; border-radius: 8px;
+    margin: 2px 4px; padding: 9px 10px;
 }
-QListWidget#nav::item:hover { background: #2a2a30; color: #d6d6db; }
+QListWidget#nav::item:hover { background: #232329; color: #d6d6db; }
 QListWidget#nav::item:selected {
-    background: #2f3550; border: 1px solid #4f8cff; color: #ffffff;
+    background: #2f3550; color: #ffffff;
+    border-left: 3px solid #4f8cff; padding-left: 7px; /* 补偿指示条占位 */
 }
 QLabel#pageTitle { color: #f5f5f5; font-size: 15px; font-weight: 700; }
 QLabel#fieldTitle { color: #b5b5b5; font-size: 12px; font-weight: 600; }
@@ -89,21 +91,27 @@ QTreeWidget::item:selected { background: #2f3550; color: #ffffff; }
 QTreeWidget::branch { background: transparent; }
 )"));
 
-    // 左侧竖向导航（文字竖排）+ 右侧页面
+    // 左侧竖向导航（图标 + 横排文字，选中态左侧蓝条）
     m_nav = new QListWidget(this);
     m_nav->setObjectName(QStringLiteral("nav"));
-    m_nav->setFixedWidth(100);
+    m_nav->setFixedWidth(116);
+    m_nav->setIconSize(QSize(16, 16));
     m_nav->setFocusPolicy(Qt::WheelFocus);
-    const QStringList navTexts = {QStringLiteral("⚙\n常\n规"),
-                                  QStringLiteral("◉\n服\n务"),
-                                  QStringLiteral("⇄\n更\n新"),
-                                  QStringLiteral("⚒\n修\n复"),
-                                  QStringLiteral("ℹ\n关\n于")};
-    const int navHeight = 92; // 各 tab 等高，视觉整齐
-    for (int i = 0; i < navTexts.size(); ++i) {
-        auto *item = new QListWidgetItem(navTexts[i], m_nav);
-        item->setTextAlignment(Qt::AlignCenter);
-        item->setSizeHint(QSize(82, navHeight));
+    const struct
+    {
+        const char *text;
+        const char *icon;
+    } navItems[] = {
+        {"常规", ":/icons/settings.svg"},
+        {"服务", ":/icons/server.svg"},
+        {"更新", ":/icons/refresh.svg"},
+        {"修复", ":/icons/wrench.svg"},
+        {"关于", ":/icons/info.svg"},
+    };
+    for (const auto &it : navItems) {
+        auto *item = new QListWidgetItem(QIcon(QString::fromLatin1(it.icon)), QString::fromUtf8(it.text), m_nav);
+        item->setSizeHint(QSize(100, 36)); // 图标+文字行高，紧凑不占满
+        item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     }
     connect(m_nav, &QListWidget::currentRowChanged, this, &SettingsDialog::onNavChanged);
 

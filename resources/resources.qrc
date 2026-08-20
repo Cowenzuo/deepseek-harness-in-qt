@@ -11,5 +11,8 @@
         <file>icons/back-active.svg</file>
         <file>icons/clear.svg</file>
         <file>icons/clear-active.svg</file>
+        <file>icons/server.svg</file>
+        <file>icons/wrench.svg</file>
+        <file>icons/info.svg</file>
     </qresource>
 </RCC>
