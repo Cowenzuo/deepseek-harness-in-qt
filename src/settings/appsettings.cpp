@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStandardPaths>
 
 namespace dshinqt {
 
@@ -16,7 +17,13 @@ const char *kNodePath = "nodePath";
 const char *kPnpmPath = "pnpmPath";
 const char *kGitPath = "gitPath";
 const char *kRepoUrl = "repoUrl";
+const char *kDownloadPath = "downloadPath";
 } // namespace
+
+QString AppSettings::defaultDownloadDirectory()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+}
 
 QString AppSettings::configFilePath()
 {
@@ -45,6 +52,7 @@ bool AppSettings::load()
     pnpmPath = o.value(QLatin1String(kPnpmPath)).toString(pnpmPath);
     gitPath = o.value(QLatin1String(kGitPath)).toString(gitPath);
     repoUrl = o.value(QLatin1String(kRepoUrl)).toString(repoUrl);
+    downloadPath = o.value(QLatin1String(kDownloadPath)).toString(downloadPath);
     return true;
 }
 
@@ -57,6 +65,7 @@ bool AppSettings::save() const
     o.insert(QLatin1String(kPnpmPath), pnpmPath);
     o.insert(QLatin1String(kGitPath), gitPath);
     o.insert(QLatin1String(kRepoUrl), repoUrl);
+    o.insert(QLatin1String(kDownloadPath), downloadPath);
 
     const QString path = configFilePath();
     QDir().mkpath(QFileInfo(path).absolutePath());

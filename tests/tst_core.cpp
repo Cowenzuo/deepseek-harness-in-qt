@@ -22,6 +22,7 @@ private slots:
     void dshBootInBody();
     void clampPort_data();
     void clampPort();
+    void downloadDirectory();
 };
 
 void TestCore::toProxyUrl_data()
@@ -106,6 +107,21 @@ void TestCore::clampPort()
     QFETCH(int, port);
     QFETCH(int, expected);
     QCOMPARE(AppSettings::clampPort(port), expected);
+}
+
+void TestCore::downloadDirectory()
+{
+    AppSettings s;
+    // 未配置 → 回退系统下载目录（非空）
+    s.downloadPath.clear();
+    const QString fallback = s.downloadDirectory();
+    QVERIFY(!fallback.isEmpty());
+    QCOMPARE(fallback, AppSettings::defaultDownloadDirectory());
+    // 已配置 → 使用配置值（去除首尾空白）
+    s.downloadPath = QStringLiteral("D:/tmp/dl");
+    QCOMPARE(s.downloadDirectory(), QStringLiteral("D:/tmp/dl"));
+    s.downloadPath = QStringLiteral("  D:/tmp/dl2  ");
+    QCOMPARE(s.downloadDirectory(), QStringLiteral("D:/tmp/dl2"));
 }
 
 QTEST_MAIN(TestCore)

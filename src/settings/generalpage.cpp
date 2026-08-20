@@ -1,6 +1,7 @@
 #include "generalpage.h"
 
 #include <QDir>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -45,6 +46,19 @@ GeneralSettingsPage::GeneralSettingsPage(AppSettings *settings, DshProcessManage
     m_gitPathEdit = new QLineEdit(m_settings->gitPath, this);
     m_gitPathEdit->setPlaceholderText(QStringLiteral("留空表示使用 PATH 中的 git"));
     m_repoUrlEdit = new QLineEdit(m_settings->repoUrl, this);
+    m_downloadPathEdit = new QLineEdit(m_settings->downloadPath, this);
+    m_downloadPathEdit->setPlaceholderText(QStringLiteral("留空表示使用系统下载目录"));
+    auto *downloadBrowseBtn = new QPushButton(QStringLiteral("浏览..."), this);
+    downloadBrowseBtn->setCursor(Qt::PointingHandCursor);
+    downloadBrowseBtn->setFocusPolicy(Qt::NoFocus);
+    connect(downloadBrowseBtn, &QPushButton::clicked, this, [this]() {
+        const QString dir = QFileDialog::getExistingDirectory(
+            this, QStringLiteral("选择下载目录"),
+            m_downloadPathEdit->text().trimmed().isEmpty() ? AppSettings::defaultDownloadDirectory()
+                                                           : m_downloadPathEdit->text().trimmed());
+        if (!dir.isEmpty())
+            m_downloadPathEdit->setText(QDir::toNativeSeparators(dir));
+    });
 
     auto *grid = new QGridLayout;
     grid->setHorizontalSpacing(16);
@@ -63,6 +77,14 @@ GeneralSettingsPage::GeneralSettingsPage(AppSettings *settings, DshProcessManage
     grid->addWidget(m_gitPathEdit, r++, 1);
     grid->addWidget(fieldTitle(QStringLiteral("仓库地址"), this), r, 0);
     grid->addWidget(m_repoUrlEdit, r++, 1);
+    grid->addWidget(fieldTitle(QStringLiteral("下载目录"), this), r, 0);
+    {
+        auto *box = new QHBoxLayout;
+        box->setSpacing(8);
+        box->addWidget(m_downloadPathEdit, 1);
+        box->addWidget(downloadBrowseBtn);
+        grid->addLayout(box, r++, 1);
+    }
 
     auto *saveBtn = new QPushButton(QStringLiteral("保存配置"), this);
     saveBtn->setObjectName(QStringLiteral("primary"));
@@ -99,6 +121,7 @@ void GeneralSettingsPage::saveSettings()
     m_settings->pnpmPath = m_pnpmPathEdit->text().trimmed();
     m_settings->gitPath = m_gitPathEdit->text().trimmed();
     m_settings->repoUrl = m_repoUrlEdit->text().trimmed();
+    m_settings->downloadPath = m_downloadPathEdit->text().trimmed();
     if (!m_settings->save()) {
         QMessageBox::warning(this, QStringLiteral("设置"), QStringLiteral("配置保存失败。"));
         return;

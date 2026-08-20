@@ -86,9 +86,11 @@ MainWindow::MainWindow(QWidget *parent)
     m_pages->addWidget(m_logView);
 
     // 主页（webview）：与 stackwidget 平级叠放，常驻渲染
-    m_homePage = new HomePage(central);
+    m_homePage = new HomePage(&m_settings, central);
     lay->addWidget(m_homePage, 0, 0);
     m_homePage->lower();
+    // 页面下载事件（开始/完成/失败）转发到日志页
+    connect(m_homePage, &HomePage::downloadLog, this, &MainWindow::onDshLog);
 
     setCentralWidget(central);
 

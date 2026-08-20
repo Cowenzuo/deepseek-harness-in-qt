@@ -3,6 +3,7 @@ find_package(Qt6 REQUIRED COMPONENTS Test)
 qt_add_executable(tst_core
     tst_core.cpp
     ${CMAKE_SOURCE_DIR}/src/process/proxydetector.cpp
+    ${CMAKE_SOURCE_DIR}/src/settings/appsettings.cpp
 )
 
 target_include_directories(tst_core PRIVATE ${CMAKE_SOURCE_DIR}/src)

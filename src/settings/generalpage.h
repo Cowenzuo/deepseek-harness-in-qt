@@ -33,6 +33,7 @@ private:
     QLineEdit *m_pnpmPathEdit = nullptr;
     QLineEdit *m_gitPathEdit = nullptr;
     QLineEdit *m_repoUrlEdit = nullptr;
+    QLineEdit *m_downloadPathEdit = nullptr;
 };
 
 } // namespace dshinqt

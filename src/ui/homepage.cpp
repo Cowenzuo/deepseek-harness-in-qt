@@ -1,16 +1,22 @@
-﻿#include "homepage.h"
+#include "homepage.h"
+#include "settings/appsettings.h"
 #include "ui/theme.h"
 
 #include <QBoxLayout>
 #include <QColor>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QPalette>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QVariant>
+#include <QWebEngineDownloadRequest>
 #include <QWebEnginePage>
+#include <QWebEngineProfile>
 #include <QWebEngineView>
 
 namespace dshinqt {
@@ -28,8 +34,9 @@ const int kReloadAfterMs = 10000;  // 单周期未命中 → 自愈 reload（对
 const int kTotalTimeoutMs = 60000; // 总超时 → pageFailed
 } // namespace
 
-HomePage::HomePage(QWidget *parent)
+HomePage::HomePage(AppSettings *settings, QWidget *parent)
     : QWidget(parent)
+    , m_settings(settings)
 {
     setAutoFillBackground(true);
     QPalette pal = palette();
@@ -60,6 +67,47 @@ void HomePage::ensureWebView()
         m_webView->setPalette(webPal);
     }
     m_webView->setStyleSheet(QStringLiteral("QWebEngineView { background: #121212; }"));
+
+    // 下载承接：QtWebEngine 无默认下载行为，不接 downloadRequested 会被静默取消。
+    // 接一次 profile 信号全局生效：按设置下载目录落盘，进度/结果转发日志页。
+    // 目录每次下载时实时读 settings——设置里改了路径立即生效，无需重启。
+    {
+        auto *profile = m_webView->page()->profile();
+        connect(profile, &QWebEngineProfile::downloadRequested, this,
+                [this](QWebEngineDownloadRequest *download) {
+            QString name = download->suggestedFileName();
+            if (name.isEmpty())
+                name = QFileInfo(download->url().path()).fileName(); // 兜底：URL 末段文件名
+            QString dir = m_settings->downloadDirectory();
+            if (!QDir().mkpath(dir)) {
+                // 配置目录不可创建 → 退回系统下载目录，避免 accept 后落盘失败
+                emit downloadLog(QStringLiteral("[下载] 目录不可用，改用系统下载目录：%1").arg(dir), true);
+                dir = AppSettings::defaultDownloadDirectory();
+                QDir().mkpath(dir);
+            }
+            download->setDownloadDirectory(dir);
+            download->setDownloadFileName(name);
+            emit downloadLog(QStringLiteral("[下载] %1 -> %2").arg(name, dir), false);
+            download->accept(); // 不调用 accept() = 取消下载
+
+            // 结果跟踪：完成/取消/中断（DownloadRequested/InProgress 忽略）
+            connect(download, &QWebEngineDownloadRequest::stateChanged, this,
+                    [this, name, dir](QWebEngineDownloadRequest::DownloadState state) {
+                switch (state) {
+                case QWebEngineDownloadRequest::DownloadCompleted:
+                    emit downloadLog(QStringLiteral("[下载] 完成：%1").arg(QDir(dir).filePath(name)), false);
+                    break;
+                case QWebEngineDownloadRequest::DownloadCancelled:
+                case QWebEngineDownloadRequest::DownloadInterrupted:
+                    emit downloadLog(QStringLiteral("[下载] 已取消/失败：%1").arg(name), true);
+                    break;
+                default:
+                    break;
+                }
+            });
+        });
+        qDebug() << "[UI] 下载信号已接入 profile=" << profile;
+    }
 
     qobject_cast<QVBoxLayout *>(layout())->addWidget(m_webView); // ensureWebView 仅在构造末尾调用，layout 必为 QVBoxLayout
 
