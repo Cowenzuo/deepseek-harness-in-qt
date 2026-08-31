@@ -255,10 +255,15 @@ async function repairFile(buffer) {
       )
       note = `seq 缺口（期望 ${a.expected}，实际 ${a.got}）：按 committed 前缀截断，丢弃其后 ${state.records.length - a.recIdx} 条记录`
     } else {
-      // dup：候选修复 = 形态 B（丢弃合成 closers 块）+ 形态 A（尾部 seq/seq0 +1），
-      // 逐个验证，取首个通过者（形态误判时自动切换）
+      // dup：候选修复集（逐个验证，取首个通过者；形态误判自动切换）：
+      //   A(+1)      → 重复点之后全部 seq/seq0 +1（零丢失，单重复）
+      //   A+N        → 同上但一次补足重叠量 N=expected-got（多重复）
+      //   B          → 丢弃异常点前紧邻的合成 closers 块（恢复方关闭标记冗余）
+      //   B+         → B + 异常点后紧邻的 end-seed（恢复种子标记，加载时自动重建，
+      //                陈旧写入方插入的 chunk 使 end-seed 与真实延续撞号时一并丢弃）
       const i = a.recIdx
-      // 向前收集紧邻的"类合成"块
+      const overlap = a.expected - a.got // 重叠量（>=1）
+      // 前向"类合成"块（异常点之前）
       let b = i - 1
       while (b >= 0 && state.records[b].closerish) b--
       const blockStart = b + 1
@@ -268,37 +273,57 @@ async function repairFile(buffer) {
       const hasMarker = block.some((r) => r.synthetic)
       const blockCovers = blockSeqStart === a.got && blockSeqEnd === a.expected - 1
       const prefixContiguous = blockStart === 0 || state.records[blockStart - 1].seqs.at(-1) === a.got - 1
+      const blockOk = block.length >= 2 && hasMarker && blockCovers && prefixContiguous
+      // 异常点之后紧邻的 end-seed（仅收紧邻连续段，避免误删真实记录）
+      let e = i + 1
+      while (e < state.records.length && state.records[e].synthetic
+             && state.records[e].types[0] === 'session/end-seed') e++
+      const tailSeed = state.records.slice(i + 1, e)
+
       const candidates = []
-      if (block.length >= 2 && hasMarker && blockCovers && prefixContiguous) {
-        const drop = new Set(block.map((r) => r.recIdx))
-        candidates.push({
-          buf: await rewriteTail(buffer, framePlain, state.records, blockStart, () => true, (r) =>
-            drop.has(r.recIdx) ? null : r,
-          ),
-          note: `形态B：丢弃崩溃恢复方合成 closers ${block.length} 条（行 ${block[0].lineNo}~${block.at(-1).lineNo}），保留真实延续`,
-        })
-      }
-      candidates.push({
-        buf: await rewriteTail(buffer, framePlain, state.records, i, () => true, (r) => {
+      const makeRenumber = (n, label) => ({
+        buf: rewriteTail(buffer, framePlain, state.records, i, () => true, (r) => {
           if (r.recIdx < i) return r
           const o = { ...r.obj }
-          if (typeof o.seq === 'number') o.seq = o.seq + 1
-          if (typeof o.seq0 === 'number') o.seq0 = o.seq0 + 1
+          if (typeof o.seq === 'number') o.seq = o.seq + n
+          if (typeof o.seq0 === 'number') o.seq0 = o.seq0 + n
           return { obj: o }
         }),
-        note: `形态A：重复点之后 ${state.records.length - i} 条记录 seq/seq0 +1`,
+        note: `${label}：重复点之后 ${state.records.length - i} 条记录 seq/seq0 +${n}`,
       })
+      const makeDrop = (dropRecs, label) => {
+        const drop = new Set(dropRecs.map((r) => r.recIdx))
+        return {
+          buf: rewriteTail(buffer, framePlain, state.records, blockStart, () => true, (r) =>
+            drop.has(r.recIdx) ? null : r,
+          ),
+          note: `${label}：丢弃 ${dropRecs.length} 条（行 ${dropRecs[0].lineNo}~${dropRecs.at(-1).lineNo}），保留真实延续`,
+        }
+      }
+      // 顺序即优先级：A(+1) 零丢失单重复 → B 丢合成 closers（与手工验证一致，
+      // 避免虚假 interrupted 标记残留）→ B+ 追加 end-seed → A+N 多重复兜底
+      candidates.push(makeRenumber(1, '形态A'))
+      if (blockOk) candidates.push(makeDrop(block, '形态B'))
+      if (blockOk && tailSeed.length > 0)
+        candidates.push(makeDrop([...block, ...tailSeed], '形态B+'))
+      if (overlap > 1) candidates.push(makeRenumber(overlap, '形态A+N'))
       for (const cand of candidates) {
-        const v = verify(cand.buf)
+        const buf = await cand.buf
+        const v = verify(buf)
         if (v.ok) {
-          newBuffer = cand.buf
-          note = `seq 重复（期望 ${a.expected}，实际 ${a.got}）：${cand.note}`
+          newBuffer = buf
+          note = `seq 重复（期望 ${a.expected}，实际 ${a.got}，重叠 ${overlap}）：${cand.note}`
           break
         }
         out(`[修复] 候选被验证拒绝（${v.reason}）：${cand.note}`)
       }
       if (newBuffer === undefined) {
-        return { buffer, note: '修复失败：seq 重复的两种候选均未通过验证', changed: false, failed: true }
+        return {
+          buffer,
+          note: `修复失败：seq 重复的 ${candidates.length} 种候选均未通过验证（重叠 ${overlap}）`,
+          changed: false,
+          failed: true,
+        }
       }
     }
     const v = verify(newBuffer)
