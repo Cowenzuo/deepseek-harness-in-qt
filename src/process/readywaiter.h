@@ -31,6 +31,10 @@ public:
     // 单次探测端口：一次 HTTP GET，结果通过回调返回（非阻塞）
     void probeOnce(const QString &host, int port, std::function<void(bool)> onResult);
 
+    // dsh web 认证 token（服务启动后从日志提取）：就绪探测携带 token，
+    // 否则新版 dsh（token 认证）对无 token 请求一律 401，永不就绪
+    void setToken(const QString &token) { m_token = token; }
+
 signals:
     void ready();
     void timeout();
@@ -48,6 +52,7 @@ private:
     QTimer m_probeTimer;
     QTimer m_timeoutTimer;
     QUrl m_url;
+    QString m_token;      // dsh web 认证 token（setToken 注入）
     bool m_waitActive = false; // 区分 wait() 轮询与 probeOnce 单次探测
 };
 

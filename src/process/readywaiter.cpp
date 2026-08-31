@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QUrlQuery>
 
 namespace dshinqt {
 
@@ -31,12 +32,19 @@ void ReadyWaiter::wait(const QString &host, int port, int timeoutMs)
 void ReadyWaiter::probeOnce(const QString &host, int port, std::function<void(bool)> onResult)
 {
     qDebug() << "[WAIT] probeOnce()" << host << port;
-    const QUrl url = QUrl(QStringLiteral("http://%1:%2").arg(host).arg(port));
+    QUrl url = QUrl(QStringLiteral("http://%1:%2").arg(host).arg(port));
+    if (!m_token.isEmpty()) {
+        QUrlQuery q;
+        q.addQueryItem(QStringLiteral("token"), m_token);
+        url.setQuery(q);
+    }
     QNetworkRequest req(url);
     req.setTransferTimeout(300);
     QNetworkReply *reply = m_nam.get(req);
     connect(reply, &QNetworkReply::finished, this, [reply, onResult]() {
-        const bool ok = reply->error() == QNetworkReply::NoError;
+        // 401 = 服务在运行但要求认证 token：端口"有服务"，按在算（避免误杀后重启）
+        const bool ok = reply->error() == QNetworkReply::NoError
+                        || reply->error() == QNetworkReply::AuthenticationRequiredError;
         qDebug() << "[WAIT] probeOnce 结果 ok=" << ok << "error=" << reply->error();
         reply->deleteLater();
         onResult(ok);
@@ -52,7 +60,13 @@ void ReadyWaiter::stop()
 
 void ReadyWaiter::probe()
 {
-    QNetworkRequest req(m_url);
+    QUrl url = m_url;
+    if (!m_token.isEmpty()) {
+        QUrlQuery q;
+        q.addQueryItem(QStringLiteral("token"), m_token);
+        url.setQuery(q);
+    }
+    QNetworkRequest req(url);
     req.setTransferTimeout(2000);
     m_nam.get(req);
 }

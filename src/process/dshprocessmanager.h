@@ -44,6 +44,12 @@ public:
     bool isRunning() const;
     State state() const { return m_state; }
 
+    // 带认证 token 的 Web UI URL（token 未知时回退无 token；页面首次带 token 访问
+    // 会换取持久 cookie，之后服务重启亦可用）。extractWebToken 为日志 token 提取纯函数。
+    QString webUrl() const;
+    QString webToken() const { return m_webToken; }
+    static QString extractWebToken(const QString &logText);
+
     // 异步端口反查：PID + node 路径 + 尝试识别 dsh 源码根，回调在主线程执行
     void inspectAsync(std::function<void(const ServiceInfo &)> cb);
 
@@ -72,6 +78,7 @@ private:
     State m_state = State::Idle;
     QString m_logPath;
     QString m_sourceFile;
+    QString m_webToken; // dsh web 认证 token（启动日志 ?token= 提取，供就绪探测与页面加载）
     qint64 m_logPos = 0;
     QByteArray m_pendingLine; // 跨 chunk 未闭合的尾部半行缓冲
     qint64 m_opGeneration = 0; // 操作代际：start/stop/restart 递增，过期异步回调据此丢弃

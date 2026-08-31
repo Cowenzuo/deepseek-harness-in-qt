@@ -2,6 +2,7 @@
 
 #include "git/gitclient.h"
 #include "process/buildstaleness.h"
+#include "process/dshprocessmanager.h"
 #include "process/environmentchecker.h"
 #include "process/proxydetector.h"
 #include "process/readywaiter.h"
@@ -26,6 +27,8 @@ private slots:
     void downloadDirectory();
     void isDistStale_data();
     void isDistStale();
+    void extractWebToken_data();
+    void extractWebToken();
 };
 
 void TestCore::toProxyUrl_data()
@@ -150,6 +153,30 @@ void TestCore::isDistStale()
     QFETCH(bool, expected);
     // 限定命名空间：成员函数与自由函数同名，避免类内查找遮蔽
     QCOMPARE(dshinqt::isDistStale(commitSec, mtimeMs), expected);
+}
+
+void TestCore::extractWebToken_data()
+{
+    QTest::addColumn<QString>("input");
+    QTest::addColumn<QString>("expected");
+    QTest::newRow("plain")
+        << QStringLiteral("dsh web: http://127.0.0.1:3081/?token=dyFiUTSpIZ5YY9binWcx8AQFsa1bG1Y40BQTkqQzct0")
+        << QStringLiteral("dyFiUTSpIZ5YY9binWcx8AQFsa1bG1Y40BQTkqQzct0");
+    QTest::newRow("lan-suffix")
+        << QStringLiteral("dsh web: http://127.0.0.1:4567/?token=test-token (LAN: http://192.168.1.5:4567/?token=test-token)")
+        << QStringLiteral("test-token");
+    QTest::newRow("multi-line")
+        << QStringLiteral("已后台启动：node\ndsh web: http://127.0.0.1:3081/?token=abc123\nopening browser")
+        << QStringLiteral("abc123");
+    QTest::newRow("none") << QStringLiteral("some log without token") << QString();
+    QTest::newRow("empty") << QString() << QString();
+}
+
+void TestCore::extractWebToken()
+{
+    QFETCH(QString, input);
+    QFETCH(QString, expected);
+    QCOMPARE(DshProcessManager::extractWebToken(input), expected);
 }
 
 QTEST_MAIN(TestCore)

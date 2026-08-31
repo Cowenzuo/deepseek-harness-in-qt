@@ -186,7 +186,7 @@ QPushButton:pressed { background: #2f3550; }
     auto *reloadBtn = makeIconBtn(QStringLiteral(":/icons/refresh.svg"), QStringLiteral(":/icons/refresh-active.svg"),
                                   QStringLiteral("刷新 dsh Web UI（F5）"));
     connect(reloadBtn, &QPushButton::clicked, this, [this] {
-        m_homePage->load(QUrl(m_settings.webUrl()));
+        m_homePage->load(QUrl(m_process->webUrl())); // 带认证 token（dsh web token 认证）
         showHomePage();
     });
     statusBar()->addWidget(reloadBtn);
@@ -386,7 +386,7 @@ void MainWindow::onErrorRetry()
 {
     if (m_process->isRunning()) {
         // 服务仍在运行，只是页面加载失败 → 页面级重试（load 会重置超时与自愈标记）
-        m_homePage->load(QUrl(m_settings.webUrl()));
+        m_homePage->load(QUrl(m_process->webUrl()));
         showHomePage();
     } else {
         startService();
@@ -448,7 +448,7 @@ void MainWindow::onDshStateChanged(DshProcessManager::State state)
     case DshProcessManager::State::Running:
         text = QStringLiteral("运行中");
         qDebug() << "[UI] Running -> 后台加载 webview（锚点就绪后再显示）port=" << m_settings.webPort;
-        m_homePage->load(QUrl(m_settings.webUrl()));
+        m_homePage->load(QUrl(m_process->webUrl())); // 带认证 token：首次访问换取持久 cookie
         // 不在此处 showHomePage()：等 HomePage::pageReady（输入区/会话区已挂载）再 raise 显示，
         // 避免用户看到 dsh 早期加载的 “failed to load plugins” 警告。
         break;

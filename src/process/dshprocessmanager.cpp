@@ -7,6 +7,8 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QUrl>
+#include <QUrlQuery>
 
 #include "readywaiter.h"
 #include "settings/appsettings.h"
@@ -17,7 +19,16 @@ namespace dshinqt {
 namespace {
 // 反查兜底候选源码根：仅本机常见位置，可由配置/命令行解析优先命中覆盖
 const char *kFallbackSourceRoot = "D:/framework/deepseek-harness";
+// dsh web 启动打印行：dsh web: http://127.0.0.1:3081/?token=<base64url>
+const char *kWebTokenPattern = "\\?token=([A-Za-z0-9_-]+)";
 } // namespace
+
+QString DshProcessManager::extractWebToken(const QString &logText)
+{
+    const QRegularExpression re(QString::fromLatin1(kWebTokenPattern));
+    const QRegularExpressionMatch m = re.match(logText);
+    return m.hasMatch() ? m.captured(1) : QString();
+}
 
 QString DshProcessManager::stateName(State s)
 {
@@ -55,14 +66,33 @@ void DshProcessManager::attach()
 {
     qDebug() << "[SVC] attach() 服务已在运行，直接连接";
     emit logOutput(QStringLiteral("检测到 deepseek-harness 已在运行，直接连接"), false);
-    // 从文件尾开始 tail（跳过历史日志），并启动监督定时器
+    // 从日志提取认证 token（dsh web 打印的 ?token=）；随后从文件尾开始 tail
     QFile f(m_logPath);
     if (f.open(QIODevice::ReadOnly)) {
+        const QString token = extractWebToken(QString::fromUtf8(f.readAll()));
+        if (!token.isEmpty()) {
+            m_webToken = token;
+            m_waiter->setToken(token);
+            qDebug() << "[SVC] attach 已提取认证 token";
+        }
         m_logPos = f.size();
         f.close();
     }
     m_pollTimer.start();
     setState(State::Running);
+}
+
+QString DshProcessManager::webUrl() const
+{
+    QString url = m_settings->webUrl();
+    if (!m_webToken.isEmpty()) {
+        QUrl u(url);
+        QUrlQuery q;
+        q.addQueryItem(QStringLiteral("token"), m_webToken);
+        u.setQuery(q);
+        url = u.toString();
+    }
+    return url;
 }
 
 void DshProcessManager::start()
@@ -90,7 +120,7 @@ void DshProcessManager::beginLaunch()
     QStringList args;
     args << QStringLiteral("--import") << QStringLiteral("tsx/esm") << QStringLiteral("apps/cli/src/bin.ts")
          << QStringLiteral("web") << QStringLiteral("--host") << QStringLiteral("127.0.0.1") << QStringLiteral("--port")
-         << QString::number(m_settings->webPort);
+         << QString::number(m_settings->webPort) << QStringLiteral("--no-open"); // 壳内嵌 UI 承载，不弹默认浏览器
 
     QFile f(m_logPath);
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
@@ -425,6 +455,14 @@ void DshProcessManager::readLogTail()
         const QString line = QString::fromUtf8(lines[i]).trimmed();
         if (line.isEmpty())
             continue;
+        // 提取 dsh web 认证 token（启动打印行 dsh web: http://.../?token=xxx）
+        const QString token = extractWebToken(line);
+        if (!token.isEmpty() && token != m_webToken) {
+            m_webToken = token;
+            m_waiter->setToken(token);
+            qDebug() << "[SVC] 已提取 Web UI 认证 token";
+            emit logOutput(QStringLiteral("已获取 Web UI 认证 token"), false);
+        }
         emit logOutput(line, false);
     }
     if (chunk.isEmpty())
